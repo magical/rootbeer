@@ -95,7 +95,7 @@ func (g *Generator) Search() *node {
 
 		select {
 		case <-g.progress:
-			log.Printf("current: %d, max %d", no.len, max.len)
+			log.Printf("current: %d, max %d, visited: %d", no.len, max.len, len(visited))
 			fmt.Println(no.state.blocks.String())
 		default:
 		}
