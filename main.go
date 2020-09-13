@@ -9,16 +9,14 @@ import (
 	"time"
 )
 
-const n = 10
-
 func main() {
 	progressflag := flag.Bool("progress", false, "show progress")
 	flag.Parse()
 
 	var border Bitmap
 	for i := range border {
-		if i < n {
-			border[i] = 0xffff >> n << n
+		if i < height {
+			border[i] = 0xffff >> width << width
 		} else {
 			border[i] = 0xffff
 		}
@@ -41,7 +39,7 @@ func main() {
 		0b1000000001,
 		0b1001000101,
 		0b1011111111,
-		0b1111111111,
+		//0b1111111111,
 	}
 	g.sink = Point{X: 8, Y: 8}
 	g.startPos = Point{X: 8, Y: 7}
@@ -138,10 +136,10 @@ func (g *Generator) Search() *node {
 				for _, d := range dirs {
 					dx, dy := int(d.X), int(d.Y)
 
-					if x+dx+dx < 0 || x+dx+dx > n {
+					if x+dx+dx < 0 || x+dx+dx > width {
 						continue
 					}
-					if y+dy+dy < 0 || y+dy+dy > n {
+					if y+dy+dy < 0 || y+dy+dy > height {
 						continue
 					}
 

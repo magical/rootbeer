@@ -1,6 +1,9 @@
 package main
 
-type Bitmap [10]uint16
+type Bitmap [height]uint16
+
+const width = 10
+const height = 9
 
 func (b *Bitmap) Set(x, y int8, v bool) {
 	if v {
@@ -23,8 +26,8 @@ func (b Bitmap) Union(q Bitmap) Bitmap {
 
 func (b *Bitmap) String() string {
 	var s []byte
-	for y := 0; y < n; y++ {
-		for x := 0; x < n; x++ {
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
 			if b.At(int8(x), int8(y)) {
 				if (x+y)%2 == 0 {
 					s = append(s, "##"...)
