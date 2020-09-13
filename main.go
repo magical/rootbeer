@@ -192,6 +192,7 @@ func (s *state) normalize(walls *Bitmap) {
 		if r[i] != 0 {
 			s.pos.Y = int8(i)
 			s.pos.X = int8(bits.Len16(r[i])-1)
+			return
 		}
 	}
 }
