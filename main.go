@@ -117,49 +117,49 @@ func (g *Generator) Search() *node {
 					panic("block does not exist")
 				}
 
-				// TODO: iterate over the four directions
-				dx := 0
-				dy := -1
+				for _, d := range dirs {
+					dx, dy := int(d.X), int(d.Y)
 
-				if x+dx+dx < 0 || x+dx+dx > n {
-					continue
-				}
-				if y+dy+dy < 0 || y+dy+dy > n {
-					continue
-				}
+					if x+dx+dx < 0 || x+dx+dx > n {
+						continue
+					}
+					if y+dy+dy < 0 || y+dy+dy > n {
+						continue
+					}
 
-				// in order to pull,
-				// two squares in the pull direction
-				// must be reachable & clear
-				if !r.At(int8(x+dx), int8(y+dy)) {
-					continue
-				}
-				if !r.At(int8(x+dx+dx), int8(y+dy+dy)) {
-					continue
-				}
+					// in order to pull,
+					// two squares in the pull direction
+					// must be reachable & clear
+					if !r.At(int8(x+dx), int8(y+dy)) {
+						continue
+					}
+					if !r.At(int8(x+dx+dx), int8(y+dy+dy)) {
+						continue
+					}
 
-				new := &node{
-					state:  no.state,
-					parent: no,
-					len:    no.len + 1,
+					new := &node{
+						state:  no.state,
+						parent: no,
+						len:    no.len + 1,
+					}
+					// set the new block position
+					new.state.blocks.Set(int8(x), int8(y), false)
+					new.state.blocks.Set(int8(x+dx), int8(y+dy), true)
+
+					// there is always a block at the sink
+					new.state.blocks.Set(g.sink.X, g.sink.Y, true)
+
+					// update pos
+					// TODO: normalize to upper left reachable square
+					new.state.pos.X = int8(x + dx + dx)
+					new.state.pos.Y = int8(y + dy + dy)
+
+					// add to the heap
+					if v := visited[new.state]; v != nil {
+						continue
+					}
+					heap.Push(&queue, new)
 				}
-				// set the new block position
-				new.state.blocks.Set(int8(x), int8(y), false)
-				new.state.blocks.Set(int8(x+dx), int8(y+dy), true)
-
-				// there is always a block at the sink
-				new.state.blocks.Set(g.sink.X, g.sink.Y, true)
-
-				// update pos
-				// TODO: normalize to upper left reachable square
-				new.state.pos.X = int8(x + dx + dx)
-				new.state.pos.Y = int8(y + dy + dy)
-
-				// add to the heap
-				if v := visited[new.state]; v != nil {
-					continue
-				}
-				heap.Push(&queue, new)
 			}
 		}
 	}
