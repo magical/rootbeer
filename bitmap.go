@@ -1,6 +1,6 @@
 package main
 
-type Bitmap [16]uint16
+type Bitmap [10]uint16
 
 func (b *Bitmap) Set(x, y int8, v bool) {
 	if v {

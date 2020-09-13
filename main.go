@@ -9,14 +9,13 @@ import (
 	"time"
 )
 
-var border Bitmap
-
-const n = 14
+const n = 10
 
 func main() {
 	progressflag := flag.Bool("progress", false, "show progress")
 	flag.Parse()
 
+	var border Bitmap
 	for i := range border {
 		if i < n {
 			border[i] = 0xffff >> n << n
@@ -32,15 +31,34 @@ func main() {
 
 	var g Generator
 	g.border = border
-	g.walls = border
-	g.sink = Point{X: 1, Y: n - 1}
-	g.startPos = Point{X: 1, Y: 1}
+	g.walls = Bitmap{
+		0b1001000101,
+		0b1000010001,
+		0b1010000001,
+		0b1000101011,
+		0b1101000001,
+		0b1000100101,
+		0b1000000001,
+		0b1001000101,
+		0b1011111111,
+		0b1111111111,
+	}
+	g.sink = Point{X: 8, Y: 8}
+	g.startPos = Point{X: 8, Y: 7}
 	g.progress = progress
+
+	for i := range g.walls {
+		g.walls[i] = bits.Reverse16(g.walls[i])>>6
+	}
+	g.sink.X = 1
+	g.startPos.X = 1
+
 	fmt.Println(g.walls.String())
 	node := g.Search()
 	fmt.Println(node.len)
+	fmt.Println(node.state.pos)
 	for n := node; n != nil; n = n.parent {
-		fmt.Println(n.state.blocks.String())
+		fmt.Print(n.state.blocks.String())
 		fmt.Println("-")
 	}
 	//pretty.Println(node.state)
@@ -95,8 +113,8 @@ func (g *Generator) Search() *node {
 
 		select {
 		case <-g.progress:
-			log.Printf("current: %d, max %d, visited: %d", no.len, max.len, len(visited))
-			fmt.Println(no.state.blocks.String())
+			log.Printf("current: %d, max %d, visited: %d\n%s", no.len, max.len, len(visited),
+				no.state.blocks.String())
 		default:
 		}
 
@@ -137,7 +155,8 @@ func (g *Generator) Search() *node {
 						continue
 					}
 
-					new := &node{
+					new := newnode()
+					*new = node{
 						state:  no.state,
 						parent: no,
 						len:    no.len + 1,
@@ -150,9 +169,10 @@ func (g *Generator) Search() *node {
 					new.state.blocks.Set(g.sink.X, g.sink.Y, true)
 
 					// update pos
-					// TODO: normalize to upper left reachable square
 					new.state.pos.X = int8(x + dx + dx)
 					new.state.pos.Y = int8(y + dy + dy)
+
+					new.state.normalize(&g.walls)
 
 					// add to the heap
 					if v := visited[new.state]; v != nil {
@@ -165,6 +185,16 @@ func (g *Generator) Search() *node {
 	}
 	log.Println("visited ", len(visited), "states")
 	return max
+}
+
+func (s *state) normalize(walls *Bitmap) {
+	r := reachable(s.pos.X, s.pos.Y, &s.blocks, walls)
+	for i := range r {
+		if r[i] != 0 {
+			s.pos.Y = int8(i)
+			s.pos.X = int8(bits.Len16(r[i])-1)
+		}
+	}
 }
 
 // Return a bitmap of all squares reachable from x,y
@@ -216,4 +246,16 @@ func (h *nodeQueue) Pop() interface{} {
 	x := (*h)[len(*h)-1]
 	*h = (*h)[:len(*h)-1]
 	return x
+}
+
+var nodepool []node
+
+// bump allocator for nodes
+func newnode() *node {
+	if len(nodepool) == 0 {
+		nodepool = make([]node, 100000)
+	}
+	node := &nodepool[0]
+	nodepool = nodepool[1:]
+	return node
 }
