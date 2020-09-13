@@ -101,7 +101,7 @@ func (g *Generator) Search() *node {
 		}
 
 		// find reachable squares
-		r := g.walls.Floodfill(no.state.pos.X, no.state.pos.Y)
+		r := reachable(no.state.pos.X, no.state.pos.Y, &g.walls, &no.state.blocks)
 
 		// find valid moves
 		for i, bl := range no.state.blocks {
@@ -157,14 +157,42 @@ func (g *Generator) Search() *node {
 
 				// add to the heap
 				if v := visited[new.state]; v != nil {
-					// TODO: replace node if shorter path
 					continue
 				}
 				heap.Push(&queue, new)
 			}
 		}
 	}
+	log.Println("visited ", len(visited), "states")
 	return max
+}
+
+// Return a bitmap of all squares reachable from x,y
+// without visiting mask1 or mask2
+func reachable(x, y int8, mask1, mask2 *Bitmap) Bitmap {
+	var a Bitmap
+	a.Set(x, y, true)
+	for {
+		prev := uint16(0)
+		changed := uint16(0)
+		for i := 0; i < len(a); i++ {
+			tmp := a[i]
+			tmp2 := tmp | tmp<<1 | tmp>>1 | prev
+			if i+1 < len(a) {
+				tmp2 |= a[i+1]
+			}
+			tmp2 &^= mask1[i]
+			tmp2 &^= mask2[i]
+			changed |= tmp2 &^ tmp
+			a[i] |= tmp2
+			prev = tmp
+		}
+
+		if changed == 0 {
+			break
+		}
+	}
+	return a
 }
 
 type node struct {
