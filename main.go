@@ -56,7 +56,7 @@ func main() {
 	fmt.Println(node.len)
 	fmt.Println(node.state.pos)
 	for n := node; n != nil; n = n.parent {
-		fmt.Print(n.state.blocks.String())
+		fmt.Print(formatLevel(&g, n))
 		fmt.Println("-")
 	}
 	//pretty.Println(node.state)
@@ -257,4 +257,29 @@ func newnode() *node {
 	node := &nodepool[0]
 	nodepool = nodepool[1:]
 	return node
+}
+
+
+
+func formatLevel(g *Generator, n *node) string {
+	var s []byte
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			if g.walls.At(int8(x), int8(y)) {
+				s = append(s, "##"...)
+			} else if n.state.blocks.At(int8(x), int8(y)) {
+				s = append(s, "[]"...)
+			} else if x == int(n.state.pos.X) && y == int(n.state.pos.Y) {
+				s = append(s, "$ "...)
+			} else {
+				if y%2 == 0 {
+					s = append(s, ". "...)
+				} else {
+					s = append(s, " ,"...)
+				}
+			}
+		}
+		s = append(s, '\n')
+	}
+	return string(s)
 }

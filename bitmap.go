@@ -29,16 +29,12 @@ func (b *Bitmap) String() string {
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			if b.At(int8(x), int8(y)) {
-				if (x+y)%2 == 0 {
-					s = append(s, "##"...)
-				} else {
-					s = append(s, "&&"...)
-				}
+				s = append(s, "[]"...)
 			} else {
-				if (x+y)%2 == 0 {
-					s = append(s, ".."...)
+				if y%2 == 0 {
+					s = append(s, ". "...)
 				} else {
-					s = append(s, ",,"...)
+					s = append(s, " ,"...)
 				}
 			}
 		}
