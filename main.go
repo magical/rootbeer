@@ -41,7 +41,7 @@ func main() {
 	g.sink.X = 1
 	g.startPos.X = 1
 
-	fmt.Println(g.walls.String())
+	//fmt.Println(g.walls.String())
 	node := g.Search()
 	fmt.Println(node.len)
 	fmt.Println(node.state.pos)
@@ -86,7 +86,7 @@ func (g *Generator) Search() *node {
 	start.state.blocks.Set(g.sink.X, g.sink.Y, true)
 	start.state.pos = g.startPos
 	start.state.normalize(&g.walls)
-	fmt.Println(start.state.blocks.String())
+	log.Print("\n", formatLevel(g, start))
 	queue = append(queue, start)
 	for len(queue) > 0 {
 		no := heap.Pop(&queue).(*node)
@@ -252,7 +252,7 @@ func newnode() *node {
 func formatLevel(g *Generator, n *node) string {
 	var s []byte
 	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
+		for x := width - 1; x >= 0; x-- {
 			if g.walls.At(int8(x), int8(y)) {
 				s = append(s, "##"...)
 			} else if n.state.blocks.At(int8(x), int8(y)) {
