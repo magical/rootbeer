@@ -13,22 +13,12 @@ func main() {
 	progressflag := flag.Bool("progress", false, "show progress")
 	flag.Parse()
 
-	var border Bitmap
-	for i := range border {
-		if i < height {
-			border[i] = 0xffff >> width << width
-		} else {
-			border[i] = 0xffff
-		}
-	}
-
 	var progress <-chan time.Time
 	if *progressflag {
 		progress = time.Tick(1 * time.Second)
 	}
 
 	var g Generator
-	g.border = border
 	g.walls = Bitmap{
 		0b1001000101,
 		0b1000010001,
@@ -63,7 +53,6 @@ func main() {
 }
 
 type Generator struct {
-	border   Bitmap // XXX delete?
 	walls    Bitmap
 	sink     Point // where the block have to go (come from)
 	startPos Point
@@ -137,10 +126,10 @@ func (g *Generator) Search() *node {
 				for _, d := range dirs {
 					dx, dy := int(d.X), int(d.Y)
 
-					if x+dx+dx < 0 || x+dx+dx > width {
+					if x+dx+dx < 0 || x+dx+dx >= width {
 						continue
 					}
-					if y+dy+dy < 0 || y+dy+dy > height {
+					if y+dy+dy < 0 || y+dy+dy >= height {
 						continue
 					}
 
