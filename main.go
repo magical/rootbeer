@@ -90,20 +90,21 @@ var dirs = [4]Point{
 }
 
 func (g *Generator) Search() *node {
-	var visited = make(map[state]*node)
+	var visited = make(map[state]struct{})
 	var queue nodeQueue // []*node
 	var start = new(node)
 	var max = start
 	start.state.blocks.Set(g.sink.X, g.sink.Y, true)
 	start.state.pos = g.startPos
+	start.state.normalize(&g.walls)
 	fmt.Println(start.state.blocks.String())
 	queue = append(queue, start)
 	for len(queue) > 0 {
 		no := heap.Pop(&queue).(*node)
-		if v := visited[no.state]; v != nil {
+		if _, ok := visited[no.state]; ok {
 			continue
 		}
-		visited[no.state] = no
+		visited[no.state] = struct{}{}
 
 		if no.len > max.len {
 			max = no
@@ -173,7 +174,7 @@ func (g *Generator) Search() *node {
 					new.state.normalize(&g.walls)
 
 					// add to the heap
-					if v := visited[new.state]; v != nil {
+					if _, ok := visited[new.state]; ok {
 						continue
 					}
 					heap.Push(&queue, new)
