@@ -209,7 +209,7 @@ type state struct {
 type nodeQueue []*node
 
 func (h nodeQueue) Len() int            { return len(h) }
-func (h nodeQueue) Less(i, j int) bool  { return !(h[i].len < h[j].len) }
+func (h nodeQueue) Less(i, j int) bool  { return h[i].len < h[j].len }
 func (h nodeQueue) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
 func (h *nodeQueue) Push(x interface{}) { *h = append(*h, x.(*node)) }
 func (h *nodeQueue) Pop() interface{} {
