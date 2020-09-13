@@ -46,7 +46,7 @@ func main() {
 	g.progress = progress
 
 	for i := range g.walls {
-		g.walls[i] = bits.Reverse16(g.walls[i])>>6
+		g.walls[i] = bits.Reverse16(g.walls[i]) >> 6
 	}
 	g.sink.X = 1
 	g.startPos.X = 1
@@ -191,7 +191,7 @@ func (s *state) normalize(walls *Bitmap) {
 	for i := range r {
 		if r[i] != 0 {
 			s.pos.Y = int8(i)
-			s.pos.X = int8(bits.Len16(r[i])-1)
+			s.pos.X = int8(bits.Len16(r[i]) - 1)
 			return
 		}
 	}
@@ -259,8 +259,6 @@ func newnode() *node {
 	nodepool = nodepool[1:]
 	return node
 }
-
-
 
 func formatLevel(g *Generator, n *node) string {
 	var s []byte
