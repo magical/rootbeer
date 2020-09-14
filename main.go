@@ -199,47 +199,60 @@ func (g *Generator) Search() *node {
 				for _, d := range dirs {
 					dx, dy := int(d.X), int(d.Y)
 
-					if x+dx+dx < 0 || x+dx+dx >= width {
+					// square beside the block must be
+					// reachable and not blocked
+					if x+dx < 0 || x+dx >= width {
 						continue
 					}
-					if y+dy+dy < 0 || y+dy+dy >= height {
+					if y+dy < 0 || y+dy >= height {
 						continue
 					}
-
-					// in order to pull,
-					// two squares in the pull direction
-					// must be reachable & clear
 					if !r.At(int8(x+dx), int8(y+dy)) {
 						continue
 					}
-					if !r.At(int8(x+dx+dx), int8(y+dy+dy)) {
-						continue
+
+					// block lines metric:
+					// pulling a block multiple squares in one direction
+					// counts as a single move
+					for j := 1; j < 30; j++ {
+						// in order to pull,
+						// (j+1) squares in the pull direction
+						// must be reachable & clear
+						if x+dx*(j+1) < 0 || x+dx*(j+1) >= width {
+							break
+						}
+						if y+dy*(j+1) < 0 || y+dy*(j+1) >= height {
+							break
+						}
+						if !r.At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
+							break
+						}
+
+						new := newnode()
+						*new = node{
+							state:  no.state,
+							parent: no,
+							len:    no.len + 1,
+						}
+						// set the new block position
+						new.state.blocks.Set(int8(x), int8(y), false)
+						new.state.blocks.Set(int8(x+dx*j), int8(y+dy*j), true)
+
+						// there is always a block at the sink
+						new.state.blocks.Set(g.sink.X, g.sink.Y, true)
+
+						// update pos
+						new.state.pos.X = int8(x + dx*(j+1))
+						new.state.pos.Y = int8(y + dy*(j+1))
+
+						new.state.normalize(&g.walls)
+
+						// add to the heap
+						if _, ok := visited[new.state]; ok {
+							continue
+						}
+						heap.Push(&queue, new)
 					}
-
-					new := newnode()
-					*new = node{
-						state:  no.state,
-						parent: no,
-						len:    no.len + 1,
-					}
-					// set the new block position
-					new.state.blocks.Set(int8(x), int8(y), false)
-					new.state.blocks.Set(int8(x+dx), int8(y+dy), true)
-
-					// there is always a block at the sink
-					new.state.blocks.Set(g.sink.X, g.sink.Y, true)
-
-					// update pos
-					new.state.pos.X = int8(x + dx + dx)
-					new.state.pos.Y = int8(y + dy + dy)
-
-					new.state.normalize(&g.walls)
-
-					// add to the heap
-					if _, ok := visited[new.state]; ok {
-						continue
-					}
-					heap.Push(&queue, new)
 				}
 			}
 		}
