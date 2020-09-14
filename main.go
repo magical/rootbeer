@@ -44,17 +44,22 @@ func main() {
 		foundPlayer := false
 		for y := 0; y < height; y++ {
 			for x := 0; x < width; x++ {
-				if level.Tiles[y][x] == Wall {
+				switch level.Tiles[y][x] {
+				case Wall:
 					g.walls.Set(int8(x), int8(y), true)
-				}
-				if level.Tiles[y][x] == Teleport {
+				case Teleport:
 					g.sink.X = int8(x)
 					g.sink.Y = int8(y)
-				}
-				if level.Tiles[y][x] == Player {
+				case Player:
 					g.startPos.X = int8(x)
 					g.startPos.Y = int8(y)
 					foundPlayer = true
+				case Trap:
+					g.trap.X = int8(x)
+					g.trap.Y = int8(y)
+				case TrapButton:
+					g.button.X = int8(x)
+					g.button.Y = int8(y)
 				}
 			}
 		}
@@ -89,6 +94,10 @@ func main() {
 	if *outflag != "" {
 		var level Level
 		level.Title = "Computer"
+		// TODO: set buttom layer if necessary
+		// TODO: connect button to trap
+		level.Tiles[g.trap.Y][g.trap.X] = Trap
+		level.Tiles[g.button.Y][g.button.X] = TrapButton
 		for y := 0; y < height; y++ {
 			for x := 0; x < width; x++ {
 				if g.walls.At(int8(x), int8(y)) {
@@ -114,6 +123,9 @@ type Generator struct {
 	sink     Point // where the block have to go (come from)
 	startPos Point
 
+	trap   Point
+	button Point
+
 	progress <-chan time.Time
 }
 
@@ -135,14 +147,19 @@ var dirs = [4]Point{
 	{-1, 0}, {+1, 0}, {0, -1}, {0, +1},
 }
 
+// TODO: don't assume there's always a trap
+
 func (g *Generator) Search() *node {
 	var visited = make(map[state]struct{})
 	var queue nodeQueue // []*node
 	var start = new(node)
+	var traps Bitmap
+	var newtraps Bitmap
 	var max = start
+	traps.Set(g.trap.X, g.trap.Y, true) // so starts off closed b/c no blocks
 	start.state.blocks.Set(g.sink.X, g.sink.Y, true)
 	start.state.pos = g.startPos
-	start.state.normalize(&g.walls)
+	start.state.normalize(&g.walls, &traps)
 	log.Print("\n", formatLevel(g, start))
 	queue = append(queue, start)
 	for len(queue) > 0 {
@@ -166,8 +183,11 @@ func (g *Generator) Search() *node {
 		default:
 		}
 
+		// the trap is closed if and only if there is no block on the button
+		traps.Set(g.trap.X, g.trap.Y, !no.state.blocks.At(g.button.X, g.button.Y))
+
 		// find reachable squares
-		r := reachable(no.state.pos.X, no.state.pos.Y, &g.walls, &no.state.blocks)
+		r := reachable(no.state.pos.X, no.state.pos.Y, &g.walls, &no.state.blocks, &traps)
 
 		// find valid moves
 		for i, bl := range no.state.blocks {
@@ -181,6 +201,12 @@ func (g *Generator) Search() *node {
 
 				if !no.state.blocks.At(int8(x), int8(y)) {
 					panic("block does not exist")
+				}
+
+				if traps.At(int8(x), int8(y)) {
+					// trap is closed, so block cannot move
+					// TODO: could mask bl instead
+					continue
 				}
 
 				for _, d := range dirs {
@@ -232,7 +258,10 @@ func (g *Generator) Search() *node {
 						new.state.pos.X = int8(x + dx*(j+1))
 						new.state.pos.Y = int8(y + dy*(j+1))
 
-						new.state.normalize(&g.walls)
+						// the trap is closed if and only if there is no block on the button
+						newtraps.Set(g.trap.X, g.trap.Y, !new.state.blocks.At(g.button.X, g.button.Y))
+
+						new.state.normalize(&g.walls, &newtraps)
 
 						// add to the heap
 						if _, ok := visited[new.state]; ok {
@@ -248,8 +277,8 @@ func (g *Generator) Search() *node {
 	return max
 }
 
-func (s *state) normalize(walls *Bitmap) {
-	r := reachable(s.pos.X, s.pos.Y, &s.blocks, walls)
+func (s *state) normalize(walls, extra *Bitmap) {
+	r := reachable(s.pos.X, s.pos.Y, &s.blocks, walls, extra)
 	for i := range r {
 		if r[i] != 0 {
 			s.pos.Y = int8(i)
@@ -261,7 +290,7 @@ func (s *state) normalize(walls *Bitmap) {
 
 // Return a bitmap of all squares reachable from x,y
 // without visiting mask1 or mask2
-func reachable(x, y int8, mask1, mask2 *Bitmap) Bitmap {
+func reachable(x, y int8, mask1, mask2, mask3 *Bitmap) Bitmap {
 	var a Bitmap
 	a.Set(x, y, true)
 	for {
@@ -275,6 +304,7 @@ func reachable(x, y int8, mask1, mask2 *Bitmap) Bitmap {
 			}
 			tmp2 &^= mask1[i]
 			tmp2 &^= mask2[i]
+			tmp2 &^= mask3[i]
 			changed |= tmp2 &^ tmp
 			a[i] |= tmp2
 			prev = tmp
