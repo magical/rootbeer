@@ -4,12 +4,16 @@ import (
 	"container/heap"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/bits"
+	"os"
 	"time"
 )
 
 func main() {
+	mapflag := flag.String("map", "", "levelset to load walls from [optional]")
+	outflag := flag.String("o", "", "file to save generated level to [optional]")
 	progressflag := flag.Bool("progress", false, "show progress")
 	flag.Parse()
 
@@ -41,6 +45,49 @@ func main() {
 	g.sink.X = 1
 	g.startPos.X = 1
 
+	if *mapflag != "" {
+		data, err := ioutil.ReadFile(*mapflag)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		level, err := DecodeLevel(data)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		g.walls = Bitmap{}
+		foundPlayer := false
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				if level.Tiles[y][x] == Wall {
+					g.walls.Set(int8(x), int8(y), true)
+				}
+				if level.Tiles[y][x] == Teleport {
+					g.sink.X = int8(x)
+					g.sink.Y = int8(y)
+				}
+				if level.Tiles[y][x] == Player {
+					g.startPos.X = int8(x)
+					g.startPos.Y = int8(y)
+					foundPlayer = true
+				}
+			}
+		}
+		if !foundPlayer {
+		loop:
+			for y := 0; y < height; y++ {
+				for x := 0; x < width; x++ {
+					if level.Tiles[y][x] == Floor {
+						g.startPos.X = int8(x)
+						g.startPos.Y = int8(y)
+						break loop
+					}
+				}
+			}
+		}
+	}
+
 	//fmt.Println(g.walls.String())
 	node := g.Search()
 	fmt.Println(node.len)
@@ -50,6 +97,28 @@ func main() {
 		fmt.Println("-")
 	}
 	//pretty.Println(node.state)
+
+	if *outflag != "" {
+		var level Level
+		level.Title = "Computer"
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				if g.walls.At(int8(x), int8(y)) {
+					level.Tiles[y][x] = Wall
+				} else if node.state.blocks.At(int8(x), int8(y)) {
+					level.Tiles[y][x] = Block
+				}
+			}
+		}
+		level.Tiles[node.state.pos.Y][node.state.pos.X] = Player
+		level.Tiles[g.sink.Y][g.sink.X] = Teleport
+		err := SaveLevel(*outflag, &level)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}
+
 }
 
 type Generator struct {
