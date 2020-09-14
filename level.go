@@ -118,6 +118,11 @@ const (
 	Block
 	Exit
 	Player
+	Trap
+	TrapButton
+	Dirt
+	Popup
+	Fire
 )
 
 func (t Tile) encoding() uint8 {
@@ -134,6 +139,16 @@ func (t Tile) encoding() uint8 {
 		return 0x15
 	case Block:
 		return 0x0A
+	case Trap:
+		return 0x2B
+	case TrapButton:
+		return 0x27
+	case Dirt:
+		return 0x0B
+	case Popup:
+		return 0x2E
+	case Fire:
+		return 0x04
 	default:
 		panic("invalid tile: " + strconv.Itoa(int(t)))
 	}
@@ -253,6 +268,16 @@ func readLevel(s littlebyte.String) (*Level, error) {
 			tile = Player
 		case 0x15:
 			tile = Exit
+		case 0x2B:
+			tile = Trap
+		case 0x27:
+			tile = TrapButton
+		case 0x2E:
+			tile = Popup
+		case 0x0B:
+			tile = Dirt
+		case 0x04:
+			tile = Fire
 		default:
 			// unknown tile
 			if !printedWarning {
