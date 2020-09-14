@@ -342,7 +342,7 @@ func newnode() *node {
 func formatLevel(g *Generator, n *node) string {
 	var s []byte
 	for y := 0; y < height; y++ {
-		for x := width - 1; x >= 0; x-- {
+		for x := 0; x < width; x++ {
 			if g.walls.At(int8(x), int8(y)) {
 				s = append(s, "##"...)
 			} else if n.state.blocks.At(int8(x), int8(y)) {
