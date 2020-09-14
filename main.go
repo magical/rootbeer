@@ -89,6 +89,10 @@ func main() {
 		}
 	}
 
+	for i := range g.walls {
+		g.walls[i] |= 0xFFFF >> width << width
+	}
+
 	//fmt.Println(g.walls.String())
 	node := g.Search()
 	fmt.Println(node.len)
