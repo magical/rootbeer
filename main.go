@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	mapflag := flag.String("map", "", "levelset to load walls from [optional]")
+	mapflag := flag.String("map", "", "levelset to load walls from [required]")
 	outflag := flag.String("o", "", "file to save generated level to [optional]")
 	progressflag := flag.Bool("progress", false, "show progress")
 	flag.Parse()
@@ -24,29 +24,12 @@ func main() {
 	}
 
 	var g Generator
-	g.walls = Bitmap{
-		0b1001000101,
-		0b1000010001,
-		0b1010000001,
-		0b1000101011,
-		0b1101000001,
-		0b1000100101,
-		0b1000000001,
-		0b1001000101,
-		//0b1011111111,
-		//0b1111111111,
-	}
-	g.sink = Point{X: 8, Y: 8}
-	g.startPos = Point{X: 8, Y: 7}
 	g.progress = progress
 
-	for i := range g.walls {
-		g.walls[i] = bits.Reverse16(g.walls[i]) >> 6
-	}
-	g.sink.X = 1
-	g.startPos.X = 1
-
-	if *mapflag != "" {
+	if *mapflag == "" {
+		fmt.Fprintln(os.Stderr, "error: -map flag is required")
+		os.Exit(1)
+	} else {
 		data, err := ioutil.ReadFile(*mapflag)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
