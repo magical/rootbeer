@@ -178,7 +178,7 @@ func (g *Generator) Search() *node {
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
 			log.Printf("alloc: current %d MB, max %d MB, sys %d MB", m.Alloc/1e6, m.TotalAlloc/1e6, m.Sys/1e6)
-			log.Printf("current: %d, max %d, visited: %d\n%s", no.len, max.len, len(visited),
+			log.Printf("search: current %d, max %d, visited: %d, queue %d\n%s", no.len, max.len, len(visited), len(queue),
 				no.state.blocks.String())
 		default:
 		}
