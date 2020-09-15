@@ -79,15 +79,21 @@ func main() {
 		g.walls[i] |= 0xFFFF >> width << width
 	}
 
+	if len(g.dirt) > maxActive {
+		fmt.Fprintln(os.Stderr, "error: too many dirt/popup tiles")
+		os.Exit(1)
+	}
+
 	//fmt.Println(g.walls.String())
 	fmt.Println(g.dirt)
 	node := g.Search()
 	fmt.Println(node.len)
 	fmt.Println(node.state.pos)
-	node.state.normalize(&g.walls)
+	active := node.getActive(&g)
+	node.state.normalize(&g.walls, active)
 	for n := node; n != nil; n = n.parent {
 		fmt.Print(formatLevel(&g, n))
-		r := reachable(n.state.pos.X, n.state.pos.Y, &g.walls, &n.state.blocks, &n.state.active)
+		r := reachable(n.state.pos.X, n.state.pos.Y, &g.walls, &n.state.blocks, active)
 		fmt.Print(r.String())
 		fmt.Println("-")
 	}
@@ -98,7 +104,7 @@ func main() {
 		level.Title = "Computer"
 		for y := 0; y < height; y++ {
 			for x := 0; x < width; x++ {
-				if g.walls.At(int8(x), int8(y)) && !node.state.active.At(int8(x), int8(y)) {
+				if g.walls.At(int8(x), int8(y)) && !active.At(int8(x), int8(y)) {
 					level.Tiles[y][x] = Wall
 				} else if node.state.blocks.At(int8(x), int8(y)) {
 					level.Tiles[y][x] = Block
@@ -108,7 +114,7 @@ func main() {
 		level.Tiles[node.state.pos.Y][node.state.pos.X] = Player
 		level.Tiles[g.sink.Y][g.sink.X] = Teleport
 		for _, d := range g.dirt {
-			if node.state.active.At(d.pos.X, d.pos.Y) {
+			if active.At(d.pos.X, d.pos.Y) {
 				if level.Tiles[d.pos.Y][d.pos.X] == Floor {
 					level.Tiles[d.pos.Y][d.pos.X] = d.tile
 				} else {
@@ -122,7 +128,6 @@ func main() {
 			os.Exit(1)
 		}
 	}
-
 }
 
 type Generator struct {
@@ -170,6 +175,8 @@ var dirs = [4]Point{
 	{-1, 0}, {+1, 0}, {0, -1}, {0, +1},
 }
 
+var zero Bitmap
+
 func (g *Generator) Search() *node {
 	var visited = make(map[state]struct{})
 	var queue nodeQueue // []*node
@@ -177,7 +184,7 @@ func (g *Generator) Search() *node {
 	var max = start
 	start.state.blocks.Set(g.sink.X, g.sink.Y, true)
 	start.state.pos = g.startPos
-	start.state.normalize(&g.walls)
+	start.state.normalize(&g.walls, &zero)
 	log.Print("\n", formatLevel(g, start))
 	for _, d := range g.dirt {
 		if d.tile == Popup {
@@ -201,23 +208,35 @@ func (g *Generator) Search() *node {
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
 			log.Printf("alloc: current %d MB, max %d MB, sys %d MB", m.Alloc/1e6, m.TotalAlloc/1e6, m.Sys/1e6)
-			log.Printf("search: current %d, max %d, visited: %d, queue %d\n%s%s", no.len, max.len, len(visited), len(queue),
-				no.state.blocks.String(), no.state.active.String())
+			log.Printf("search: current %d, max %d, visited: %d, queue %d\n%sactive=%016b", no.len, max.len, len(visited), len(queue),
+				no.state.blocks.String(), no.state.active)
 		default:
 		}
 
+		// unpack active bitmap
+		var active Bitmap
+		for i, d := range g.dirt {
+			if no.state.active>>uint(i)&1 != 0 {
+				active.Set(d.pos.X, d.pos.Y, true)
+			}
+		}
+
 		// find reachable squares
-		r := reachable(no.state.pos.X, no.state.pos.Y, &g.walls, &no.state.blocks, &no.state.active)
+		r := reachable(no.state.pos.X, no.state.pos.Y, &g.walls, &no.state.blocks, &active)
 
 		// activate dirt / popup walls
-		for _, d := range g.dirt {
+		for i, d := range g.dirt {
+			// can't activate an already-active tile
+			if no.state.active>>uint(i)&1 != 0 {
+				continue
+			}
 			var canActivate = false
 			if d.tile == Dirt {
-				if r.At(d.pos.X, d.pos.Y) && !no.state.active.At(d.pos.X, d.pos.Y) {
+				if r.At(d.pos.X, d.pos.Y) {
 					canActivate = true
 				}
 			} else if d.tile == Popup {
-				if !no.state.active.At(d.pos.X, d.pos.Y) && r.hasNeighbor(d.pos.X, d.pos.Y) {
+				if r.hasNeighbor(d.pos.X, d.pos.Y) {
 					canActivate = true
 				}
 			}
@@ -229,7 +248,7 @@ func (g *Generator) Search() *node {
 					len:    no.len + 1,
 				}
 				new.state.pos = d.pos
-				new.state.active.Set(d.pos.X, d.pos.Y, true)
+				new.state.active |= 1 << uint(i)
 
 				// add to the heap
 				if _, ok := visited[new.state]; ok {
@@ -268,7 +287,7 @@ func (g *Generator) Search() *node {
 						continue
 					}
 					// can't pull blocks onto an active square
-					if no.state.active.At(int8(x+dx), int8(y+dy)) {
+					if active.At(int8(x+dx), int8(y+dy)) {
 						continue
 					}
 
@@ -277,7 +296,7 @@ func (g *Generator) Search() *node {
 					// 0  1  2  -> 0  1  2
 					if 0 <= x+dx+dx && x+dx+dx < width && 0 <= y+dy+dy && y+dy+dy < height &&
 						g.popups.At(int8(x+dx+dx), int8(y+dy+dy)) &&
-						!no.state.active.At(int8(x+dx+dx), int8(y+dy+dy)) {
+						!active.At(int8(x+dx+dx), int8(y+dy+dy)) {
 
 						new := newnode()
 						*new = node{
@@ -293,7 +312,17 @@ func (g *Generator) Search() *node {
 						new.state.blocks.Set(g.sink.X, g.sink.Y, true)
 
 						// activate popup
-						new.state.active.Set(int8(x+dx+dx), int8(y+dy+dy), true)
+						index := -1
+						for j := range g.dirt {
+							if g.dirt[j].pos.X == int8(x+dx+dx) && g.dirt[j].pos.Y == int8(y+dy+dy) {
+								index = j
+								break
+							}
+						}
+						if index < 0 {
+							panic("internal error: dirt not found")
+						}
+						new.state.active |= 1 << uint(index)
 
 						// update pos
 						new.state.pos.X = int8(x + dx + dx)
@@ -322,7 +351,7 @@ func (g *Generator) Search() *node {
 							break
 						}
 						// can't pull blocks onto an active square
-						if no.state.active.At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
+						if active.At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
 							break
 						}
 
@@ -343,7 +372,8 @@ func (g *Generator) Search() *node {
 						new.state.pos.X = int8(x + dx*(j+1))
 						new.state.pos.Y = int8(y + dy*(j+1))
 
-						new.state.normalize(&g.walls)
+						// normalize (active hasn't changed, so we can re-use the bitmap)
+						new.state.normalize(&g.walls, &active)
 
 						// add to the heap
 						if _, ok := visited[new.state]; ok {
@@ -359,8 +389,8 @@ func (g *Generator) Search() *node {
 	return max
 }
 
-func (s *state) normalize(walls *Bitmap) {
-	r := reachable(s.pos.X, s.pos.Y, &s.blocks, walls, &s.active)
+func (s *state) normalize(walls, active *Bitmap) {
+	r := reachable(s.pos.X, s.pos.Y, &s.blocks, walls, active)
 	for i := range r {
 		if r[i] != 0 {
 			s.pos.Y = int8(i)
@@ -424,9 +454,12 @@ type state struct {
 	blocks Bitmap
 	// active keeps track of which popup walls / dirt tiles have been activated
 	// once activated they are treated as a wall
-	active Bitmap
+	// each bit corresponds to an entry in the generator.dirt array
+	active uint16
 	pos    Point // position of player after last pull
 }
+
+const maxActive = 16
 
 type nodeQueue []*node
 
@@ -453,12 +486,13 @@ func newnode() *node {
 }
 
 func formatLevel(g *Generator, n *node) string {
+	active := n.getActive(g)
 	var s []byte
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			if g.walls.At(int8(x), int8(y)) && !n.state.active.At(int8(x), int8(y)) {
+			if g.walls.At(int8(x), int8(y)) && !active.At(int8(x), int8(y)) {
 				s = append(s, "##"...)
-			} else if n.state.active.At(int8(x), int8(y)) {
+			} else if active.At(int8(x), int8(y)) {
 				if x == int(n.state.pos.X) && y == int(n.state.pos.Y) {
 					s = append(s, "$/"...)
 				} else if n.state.blocks.At(int8(x), int8(y)) {
@@ -481,4 +515,14 @@ func formatLevel(g *Generator, n *node) string {
 		s = append(s, '\n')
 	}
 	return string(s)
+}
+
+func (n *node) getActive(g *Generator) *Bitmap {
+	var active Bitmap
+	for i, d := range g.dirt {
+		if n.state.active>>uint(i)&1 != 0 {
+			active.Set(d.pos.X, d.pos.Y, true)
+		}
+	}
+	return &active
 }
