@@ -84,6 +84,7 @@ func main() {
 	node := g.Search()
 	fmt.Println(node.len)
 	fmt.Println(node.state.pos)
+	node.state.normalize(&g.walls)
 	for n := node; n != nil; n = n.parent {
 		fmt.Print(formatLevel(&g, n))
 		r := reachable(n.state.pos.X, n.state.pos.Y, &g.walls, &n.state.blocks, &n.state.active)
@@ -461,7 +462,7 @@ func formatLevel(g *Generator, n *node) string {
 				if x == int(n.state.pos.X) && y == int(n.state.pos.Y) {
 					s = append(s, "$/"...)
 				} else if n.state.blocks.At(int8(x), int8(y)) {
-					s = append(s, "[/"...)
+					s = append(s, "[/"...) /* shouldn't happen */
 				} else {
 					s = append(s, "//"...)
 				}
