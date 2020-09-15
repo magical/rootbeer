@@ -304,7 +304,7 @@ func (g *Generator) Search() *node {
 						*new = node{
 							state:  no.state,
 							parent: no,
-							len:    no.len + 1,
+							len:    no.len + 3,
 						}
 						// set the new block position
 						new.state.blocks.Set(int8(x), int8(y), false)
@@ -365,7 +365,7 @@ func (g *Generator) Search() *node {
 						*new = node{
 							state:  no.state,
 							parent: no,
-							len:    no.len + 1,
+							len:    no.len + 2,
 						}
 						// set the new block position
 						new.state.blocks.Set(int8(x), int8(y), false)
