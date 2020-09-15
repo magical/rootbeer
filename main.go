@@ -323,7 +323,7 @@ func (g *Generator) Search() *node {
 						}
 						// can't pull blocks onto an active square
 						if no.state.active.At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
-							continue
+							break
 						}
 
 						new := newnode()
