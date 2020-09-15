@@ -332,6 +332,10 @@ func (g *Generator) Search() *node {
 						if _, seen := visited[new.state]; !seen {
 							heap.Push(&queue, new)
 						}
+
+						// skip the normal pull loop below
+						// (it won't get very far anyway, but we can avoid repeating some work)
+						continue
 					}
 
 					// block lines metric:
