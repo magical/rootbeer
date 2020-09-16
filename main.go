@@ -177,7 +177,7 @@ type Generator struct {
 
 type DirtPoint struct {
 	pos  Point
-	tile Tile // Dirt or Popup
+	tile Tile // Dirt or Popup or Turtle
 }
 
 type Point struct{ Y, X int8 }
