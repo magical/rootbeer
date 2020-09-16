@@ -102,6 +102,9 @@ func main() {
 		fmt.Println("-")
 	}
 	//pretty.Println(node.state)
+	if node.len < len(g.count) {
+		fmt.Println("found", g.count[node.len], "solutions of length", node.len)
+	}
 
 	if *outflag != "" {
 		var level Level
@@ -131,6 +134,7 @@ type Generator struct {
 	sink     Point // where the block have to go (come from)
 	startPos Point
 
+	count    [256]int
 	progress <-chan time.Time
 }
 
@@ -168,6 +172,9 @@ func (g *Generator) Search() *node {
 			continue
 		}
 		visited[no.state] = struct{}{}
+		if no.len < len(g.count) {
+			g.count[no.len]++
+		}
 
 		if no.len > max.len {
 			max = no
