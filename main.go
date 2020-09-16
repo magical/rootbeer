@@ -370,7 +370,7 @@ func (g *Generator) Search() *node {
 					// [] @  o     _  [](@)
 					// 0  1  2  -> 0  1  2
 					if 0 <= x+dx+dx && x+dx+dx < width && 0 <= y+dy+dy && y+dy+dy < height &&
-						g.popups.At(int8(x+dx+dx), int8(y+dy+dy)) &&
+						(g.popups.At(int8(x+dx+dx), int8(y+dy+dy)) || g.turtles.At(int8(x+dx+dx), int8(y+dy+dy))) &&
 						!active.At(int8(x+dx+dx), int8(y+dy+dy)) {
 
 						new := newnode()
