@@ -168,6 +168,9 @@ type Generator struct {
 // state.active is added to the set of walls in reachable
 // popup walls are also added to g.walls since they are always treated as walls
 
+// TODO: block slapping. if we're going to have CC2 elements like turtles,
+// then we need to support CC2 mechanics too...
+
 type DirtPoint struct {
 	pos  Point
 	tile Tile // Dirt or Popup
