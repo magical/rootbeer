@@ -120,6 +120,8 @@ const (
 	Player
 	Dirt
 	Popup
+	Water
+	Turtle
 )
 
 func (t Tile) encoding() uint8 {
@@ -140,6 +142,10 @@ func (t Tile) encoding() uint8 {
 		return 0x0B
 	case Popup:
 		return 0x2E
+	case Water:
+		return 0x03
+	case Turtle:
+		return 0x03 //XXX
 	default:
 		panic("invalid tile: " + strconv.Itoa(int(t)))
 	}
@@ -263,6 +269,8 @@ func readLevel(s littlebyte.String) (*Level, error) {
 			tile = Popup
 		case 0x0B:
 			tile = Dirt
+		case 0x03:
+			tile = Water
 		default:
 			// unknown tile
 			if !printedWarning {

@@ -58,6 +58,9 @@ func main() {
 				case Popup:
 					g.dirt = append(g.dirt, DirtPoint{p, Popup})
 					g.walls.Set(p.X, p.Y, true)
+				case Water:
+					g.dirt = append(g.dirt, DirtPoint{p, Turtle})
+					g.walls.Set(p.X, p.Y, true)
 				}
 			}
 		}
@@ -136,6 +139,7 @@ type Generator struct {
 	startPos Point
 	dirt     []DirtPoint
 	popups   Bitmap
+	turtles  Bitmap
 
 	progress <-chan time.Time
 }
@@ -190,6 +194,9 @@ func (g *Generator) Search() *node {
 		if d.tile == Popup {
 			g.popups.Set(d.pos.X, d.pos.Y, true)
 		}
+		if d.tile == Turtle {
+			g.turtles.Set(d.pos.X, d.pos.Y, true)
+		}
 	}
 	queue = append(queue, start)
 	for len(queue) > 0 {
@@ -241,6 +248,10 @@ func (g *Generator) Search() *node {
 				if r.hasNeighbor(d.pos.X, d.pos.Y) {
 					canActivate = true
 				}
+			} else if d.tile == Turtle {
+				if r.hasNeighbor(d.pos.X, d.pos.Y) {
+					canActivate = true
+				}
 			}
 			if canActivate {
 				new := newnode()
@@ -285,7 +296,60 @@ func (g *Generator) Search() *node {
 					if y+dy < 0 || y+dy >= height {
 						continue
 					}
+					// square has to be reachable
 					if !r.At(int8(x+dx), int8(y+dy)) {
+						// exception: we *can* pull blocks onto a turtle
+						// *if* the block is adjacent and we are on the *other* side
+						// [] W  @     0 [T] @    W=water T=turtle
+						// 0  1  2  -> 0  1  2
+						if hasturtle := g.turtles.At(int8(x+dx), int8(y+dy)) && !active.At(int8(x+dx), int8(y+dy)); !hasturtle {
+							continue
+						}
+						// TODO: handle a push from an active tile
+						if canreach := (0 <= x+dx+dx && x+dx+dx < width) && (0 <= y+dy+dy && y+dy+dy < height) && r.At(int8(x+dx+dx), int8(y+dy+dy)) && !active.At(int8(x+dx+dx), int8(y+dy+dy)); !canreach {
+							continue
+						}
+
+						new := newnode()
+						*new = node{
+							state:  no.state,
+							parent: no,
+							len:    no.len + 3,
+						}
+						// set the new block position
+						new.state.blocks.Set(int8(x), int8(y), false)
+						new.state.blocks.Set(int8(x+dx), int8(y+dy), true)
+
+						// there is always a block at the sink
+						// TODO: centralize this
+						new.state.blocks.Set(g.sink.X, g.sink.Y, true)
+
+						// activate turtle
+						index := -1
+						for j := range g.dirt {
+							if g.dirt[j].pos.X == int8(x+dx) && g.dirt[j].pos.Y == int8(y+dy) {
+								index = j
+								break
+							}
+						}
+						if index < 0 {
+							panic("internal error: turtle not found")
+						}
+						new.state.active |= 1 << uint(index)
+
+						// update pos and renormalize
+						new.state.pos.X = int8(x + dx + dx)
+						new.state.pos.Y = int8(y + dy + dy)
+
+						// can reuse old active bitmap because the block overlaps with the newly active tile
+						new.state.normalize(&g.walls, &active)
+
+						// add to the heap
+						if _, seen := visited[new.state]; !seen {
+							heap.Push(&queue, new)
+						}
+
+						// skip the rest of the checks (very important)
 						continue
 					}
 					// can't pull blocks onto an active square
