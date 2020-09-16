@@ -181,6 +181,10 @@ var dirs = [4]Point{
 
 var zero Bitmap
 
+// number of squares to consider during a block line
+// if set to 1 this becomes the normal push metric
+const maxPush = 1
+
 func (g *Generator) Search() *node {
 	var visited = make(map[state]struct{})
 	var queue nodeQueue // []*node
@@ -407,7 +411,7 @@ func (g *Generator) Search() *node {
 					// block lines metric:
 					// pulling a block multiple squares in one direction
 					// counts as a single move
-					for j := 1; j < 30; j++ {
+					for j := 1; j < maxPush+1; j++ {
 						// in order to pull,
 						// (j+1) squares in the pull direction
 						// must be reachable & clear
