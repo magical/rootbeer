@@ -238,6 +238,8 @@ func (g *Generator) Search() *node {
 		// activate dirt / popup walls
 		// XXX potential optimization/heuristic: don't allow two activations in a row
 		//if !active.At(no.state.pos.X, no.state.pos.Y) {
+		// XXX another potential optimization: only step on a tile
+		// if it allows us to reach an unreachable area
 		for i, d := range g.dirt {
 			// can't activate an already-active tile
 			if no.state.active>>uint(i)&1 != 0 {
