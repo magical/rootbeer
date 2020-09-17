@@ -15,6 +15,7 @@ type Level struct {
 	//Password string
 	TimeLimit int
 	Tiles     [32][32]Tile
+	Subtiles  [32][32]Tile
 }
 
 func SaveLevel(filename string, level *Level) error {
@@ -46,27 +47,11 @@ func saveLevel(w io.Writer, level *Level) error {
 		b.AddUint16(1)
 		// rle encode top layer
 		b.AddUint16LengthPrefixed(func(b *littlebyte.Builder) {
-			for y := range &level.Tiles {
-				for x := 0; x < 32; {
-					t, count := countTiles(level.Tiles[y][x:])
-					x += count
-					switch {
-					case count > 3:
-						b.AddUint8(0xFF)
-						b.AddUint8(uint8(count))
-						b.AddUint8(t.encoding())
-					default:
-						te := t.encoding()
-						for i := 0; i < count; i++ {
-							b.AddUint8(te)
-						}
-					}
-				}
-			}
+			rlencode(b, &level.Tiles)
 		})
-		// bottom layer (empty)
+		// bottom layer
 		b.AddUint16LengthPrefixed(func(b *littlebyte.Builder) {
-			b.AddBytes([]byte("\xff\xff\x00\xff\xff\x00\xff\xff\x00\xff\xff\x00\xff\x04\x00"))
+			rlencode(b, &level.Subtiles)
 		})
 
 		// optional fields
@@ -96,6 +81,26 @@ func saveLevel(w io.Writer, level *Level) error {
 	}
 	_, err = w.Write(bytes)
 	return err
+}
+
+func rlencode(b *littlebyte.Builder, tiles *[32][32]Tile) {
+	for y := range tiles {
+		for x := 0; x < 32; {
+			t, count := countTiles(tiles[y][x:])
+			x += count
+			switch {
+			case count > 3:
+				b.AddUint8(0xFF)
+				b.AddUint8(uint8(count))
+				b.AddUint8(t.encoding())
+			default:
+				te := t.encoding()
+				for i := 0; i < count; i++ {
+					b.AddUint8(te)
+				}
+			}
+		}
+	}
 }
 
 func countTiles(s []Tile) (Tile, int) {
