@@ -73,6 +73,9 @@ func main() {
 					g.startPos.Y = int8(y)
 					foundPlayer = true
 				}
+				if level.Tiles[y][x] == Fire {
+					g.fire.Set(int8(x), int8(y), true)
+				}
 			}
 		}
 		if !foundPlayer {
@@ -113,12 +116,15 @@ func main() {
 			for x := 0; x < width; x++ {
 				if g.walls.At(int8(x), int8(y)) {
 					level.Tiles[y][x] = Wall
-				} else if node.state.blocks.At(int8(x), int8(y)) {
-					level.Tiles[y][x] = Block
+				} else if g.fire.At(int8(x), int8(y)) {
+					level.Tiles[y][x] = Fire
+				}
+				if node.state.blocks.At(int8(x), int8(y)) {
+					level.push(x, y, Block)
 				}
 			}
 		}
-		level.Tiles[node.state.pos.Y][node.state.pos.X] = Player
+		level.push(int(node.state.pos.X), int(node.state.pos.Y), Player)
 		level.Tiles[g.sink.Y][g.sink.X] = Teleport
 		err := SaveLevel(*outflag, &level)
 		if err != nil {
@@ -126,13 +132,23 @@ func main() {
 			os.Exit(1)
 		}
 	}
+}
 
+func (l *Level) push(x, y int, t Tile) {
+	if l.Tiles[y][x] != Floor {
+		l.Subtiles[y][x] = l.Tiles[y][x]
+	}
+	l.Tiles[y][x] = t
 }
 
 type Generator struct {
 	walls    Bitmap
 	sink     Point // where the block have to go (come from)
 	startPos Point
+	fire     Bitmap
+
+	// areas where chip cannot go: walls+fire
+	nogo Bitmap
 
 	count    [256]int
 	progress <-chan time.Time
@@ -157,6 +173,7 @@ var dirs = [4]Point{
 }
 
 func (g *Generator) Search() *node {
+	g.nogo = g.walls.Union(g.fire)
 	var visited = make(map[state]struct{})
 	var queue nodeQueue // []*node
 	var start = new(node)
@@ -191,7 +208,7 @@ func (g *Generator) Search() *node {
 		}
 
 		// find reachable squares
-		r := reachable(no.state.pos.X, no.state.pos.Y, &g.walls, &no.state.blocks)
+		r := reachable(no.state.pos.X, no.state.pos.Y, &g.nogo, &no.state.blocks)
 
 		// find valid moves
 		for i, bl := range no.state.blocks {
@@ -252,7 +269,7 @@ func (g *Generator) Search() *node {
 					new.state.pos.X = int8(x + dx*2)
 					new.state.pos.Y = int8(y + dy*2)
 
-					new.state.normalize(&g.walls)
+					new.state.normalize(&g.nogo)
 
 					// add to the heap
 					if _, ok := visited[new.state]; ok {
@@ -348,7 +365,13 @@ func formatLevel(g *Generator, n *node) string {
 			if g.walls.At(int8(x), int8(y)) {
 				s = append(s, "##"...)
 			} else if n.state.blocks.At(int8(x), int8(y)) {
-				s = append(s, "[]"...)
+				if g.fire.At(int8(x), int8(y)) {
+					s = append(s, "[&"...)
+				} else {
+					s = append(s, "[]"...)
+				}
+			} else if g.fire.At(int8(x), int8(y)) {
+				s = append(s, "&&"...)
 			} else if x == int(n.state.pos.X) && y == int(n.state.pos.Y) {
 				s = append(s, "$ "...)
 			} else {
