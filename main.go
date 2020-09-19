@@ -235,7 +235,110 @@ func (g *Generator) Search() *node {
 					if y+dy < 0 || y+dy >= height {
 						continue
 					}
-					if !r.At(int8(x+dx), int8(y+dy)) {
+
+					// BLOCK SLAPPING
+					// in the Lynx and CC2 rulesets, you can slap blocks while moving
+					// by pressing two directions at once. the player continues moving
+					// but pushes a block to the side while doing so.
+					//
+					// it is possible to slap from a standstill. press both buttons at once:
+					// the player will move in the direction they are facing.
+					//
+					// in TW Lynx, it is only possible to slap when moving in the facing direction.
+					// In CC2, it is also possible when turning around (opposite of facing direction).
+					// the latter is simpler to support
+					//
+					// for simplicity, we only consider slapping blocks that are on a fire tile.
+					// (otherwise a normal push suffices)
+					//
+					// the generator runs the game in reverse, which makes implementing block slapping a lot harder.
+					// instead of implementing it as a single move which does two things, we split the move into two:
+					// *first* the player slaps the block, while staying motionless,
+					// *then* they move,
+					// except the other way around because we're doing this in reverse.
+					// That is, when considering whether to slap a block we have to assume
+					// that the movement that would come after it has already happened.
+					// That is, the previous state is the result of the move and this state is the preceding slap.
+					// so we just have to figure out based on the current state if the player could have just
+					// moved in a way that is compatible with a slap.
+					//
+					// to wit:
+					// suppose we are considering whether to (anti-)slap a block
+					// from the following position:
+					//
+					//        n             n
+					//  [] w  @ e  -> _ [w] @ e
+					//        s             s
+					//  0  1  2       0  1  2
+					//
+					// a slap is only possible if we just exited position 2 from n or s
+					// *and* if we could be facing n or s before the slap.
+					// we can ignore e entirely.
+					//
+					// this implies:
+					// 1. n or s must be reachable or be occupied by a block
+					// 2. if n and s are empty we can always slap, by moving from n to s
+					// 3. if n or s is empty we can slap, by entering from that direction and doing a turnaround slap
+					// 4. if one of n or s is blocked by a wall (or two blocks) and the other is emty,
+					//    we can slap by bumping into the wall to set facing and then exiting in the other direction
+					//    (even if we came from e)
+					// 5. if both n or s is blocked by a movable block, we could theoretically slap while moving that block away
+					//    but to implement that we'd have to verify that the current state moves that block, which is hard.
+					//    however! if we do (did) move that block out of the way then this becomes case (2) or (3), so
+					//    we already had the option to slap so we don't need to handle it now
+					// 6. if n and s are both blocked then slapping is impossible
+					//
+					// note that it is impossible to slap two directions at once,
+					// but in all the above cases it is possible to leave the tile and come
+					// back to slap a second time, so we don't care.
+					//
+					// this gets extremely more complicated with popup walls and other one-shot tiles
+					// but fortunately we don't have to deal with that yet!
+
+					// only consider slaps of blocks on a fire tile
+					// otherwise a regular push suffices
+					if g.fire.At(int8(x+dx), int8(y+dy)) {
+						if x+dx*2 < 0 || x+dx*2 >= width ||
+							y+dy*2 < 0 || y+dy*2 >= height ||
+							!r.At(int8(x+dx*2), int8(y+dy*2)) {
+							continue
+						}
+						// per the big comment above, we can slap as long as one of the perpendicular directions is empty
+						for _, p := range [2]Point{
+							{X: int8((x + dx*2) + dy), Y: int8(y + dy*2 + dx)},
+							{X: int8((x + dx*2) - dy), Y: int8(y + dy*2 - dx)},
+						} {
+							if r.At(p.X, p.Y) {
+								new := newnode()
+								*new = node{
+									state:  no.state,
+									parent: no,
+									len:    no.len + 1,
+								}
+								// set the new block position
+								new.state.blocks.Set(int8(x), int8(y), false)
+								new.state.blocks.Set(int8(x+dx), int8(y+dy), true)
+
+								// there is always a block at the sink
+								// XXX but my level don't have fire right next to the sink
+								//new.state.blocks.Set(g.sink.X, g.sink.Y, true)
+
+								// renormalize pos
+								new.state.pos.X = int8(x + dx*2)
+								new.state.pos.Y = int8(y + dy*2)
+								new.state.normalize(&g.nogo)
+
+								// add to the heap
+								if _, seen := visited[new.state]; seen {
+									heap.Push(&queue, new)
+								}
+
+								// don't bother checking the other direction.
+								// only need one to slap
+								break
+							}
+						}
+					} else if !r.At(int8(x+dx), int8(y+dy)) {
 						continue
 					}
 
