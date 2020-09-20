@@ -147,6 +147,8 @@ var dirs = [4]Point{
 	{-1, 0}, {+1, 0}, {0, -1}, {0, +1},
 }
 
+const maxBlocks = 8
+
 func (g *Generator) Search() *node {
 	var nogo [2]Bitmap
 	nogo[0] = g.walls.Union(g.toggle[0])
@@ -277,7 +279,9 @@ func (g *Generator) Search() *node {
 						new.state.blocks.Set(int8(x+dx*j), int8(y+dy*j), true)
 
 						// there is always a block at the sink
-						new.state.blocks.Set(g.sink.X, g.sink.Y, true)
+						if new.state.nblocks() < maxBlocks {
+							new.state.blocks.Set(g.sink.X, g.sink.Y, true)
+						}
 
 						// update pos
 						new.state.pos.X = int8(x + dx*(j+1))
@@ -300,6 +304,14 @@ func (g *Generator) Search() *node {
 		fmt.Println(formatLevel(g, no))
 	}
 	return max[0]
+}
+
+func (s *state) nblocks() int {
+	n := 0
+	for i := range &s.blocks {
+		n += bits.OnesCount16(s.blocks[i])
+	}
+	return n
 }
 
 func (s *state) normalize(walls *Bitmap) {
