@@ -47,12 +47,18 @@ func main() {
 				p := Point{X: int8(x), Y: int8(y)}
 				switch level.Tiles[y][x] {
 				case Wall:
-					g.walls.Set(int8(x), int8(y), true)
+					g.walls.Set(p.X, p.Y, true)
 				case Teleport:
 					g.sink = p
 				case Player:
 					g.startPos = p
 					foundPlayer = true
+				case ToggleWall:
+					g.toggle[0].Set(p.X, p.Y, true)
+				case ToggleFloor:
+					g.toggle[1].Set(p.X, p.Y, true)
+				case ToggleButton:
+					g.button = p
 				}
 			}
 		}
@@ -114,8 +120,10 @@ type Generator struct {
 	// TODO: add a separate field for unenterable tiles
 	// and let walls just be walls
 	walls    Bitmap
-	sink     Point // where the block have to go (come from)
+	toggle   [2]Bitmap // toggle walls/floors
+	sink     Point     // where the block have to go (come from)
 	startPos Point
+	button   Point // toggle button pos
 
 	count    [256]int
 	progress <-chan time.Time
@@ -140,15 +148,26 @@ var dirs = [4]Point{
 }
 
 func (g *Generator) Search() *node {
+	var nogo [2]Bitmap
+	nogo[0] = g.walls.Union(g.toggle[0])
+	nogo[1] = g.walls.Union(g.toggle[1])
+
 	var visited = make(map[state]struct{})
 	var queue nodeQueue // []*node
-	var start = new(node)
-	var max = start
-	start.state.blocks.Set(g.sink.X, g.sink.Y, true)
-	start.state.pos = g.startPos
-	start.state.normalize(&g.walls)
-	log.Print("\n", formatLevel(g, start))
-	queue = append(queue, start)
+
+	// init the queue with two start states:
+	// one for each toggle state
+	for t := uint8(0); t < 2; t++ {
+		start := new(node)
+		start.state.blocks.Set(g.sink.X, g.sink.Y, true)
+		start.state.pos = g.startPos
+		start.state.toggle = t
+		start.state.normalize(&nogo[t])
+		heap.Push(&queue, start)
+		log.Print("\n", formatLevel(g, start))
+	}
+
+	var max *node
 	for len(queue) > 0 {
 		no := heap.Pop(&queue).(*node)
 		if _, ok := visited[no.state]; ok {
@@ -159,7 +178,7 @@ func (g *Generator) Search() *node {
 			g.count[no.len]++
 		}
 
-		if no.len > max.len {
+		if max == nil || no.len > max.len {
 			max = no
 		}
 
@@ -174,7 +193,29 @@ func (g *Generator) Search() *node {
 		}
 
 		// find reachable squares
-		r := reachable(no.state.pos.X, no.state.pos.Y, &g.walls, &no.state.blocks)
+		r := reachable(no.state.pos.X, no.state.pos.Y, &nogo[no.state.toggle], &no.state.blocks)
+
+		// TODO:
+		// - can flick blocks off toggle walls in MSCC
+		// - let blocks press the button
+
+		if r.At(g.button.X, g.button.Y) {
+			new := newnode()
+			*new = node{
+				state:  no.state,
+				parent: no,
+				len:    no.len + 2,
+			}
+
+			// flip the toggle walls
+			new.state.toggle ^= 1
+
+			// update pos & normalize
+			new.state.pos = g.button
+			new.state.normalize(&nogo[new.state.toggle])
+
+			heap.Push(&queue, new)
+		}
 
 		// find valid moves
 		for i, bl := range no.state.blocks {
@@ -239,7 +280,7 @@ func (g *Generator) Search() *node {
 						new.state.pos.X = int8(x + dx*(j+1))
 						new.state.pos.Y = int8(y + dy*(j+1))
 
-						new.state.normalize(&g.walls)
+						new.state.normalize(&nogo[new.state.toggle])
 
 						// add to the heap
 						if _, ok := visited[new.state]; ok {
@@ -303,6 +344,7 @@ type node struct {
 type state struct {
 	blocks Bitmap
 	pos    Point // position of player after last pull
+	toggle uint8 // state of toggle walls (0 or 1, corresponds to g.toggle)
 }
 
 type nodeQueue []*node
@@ -333,10 +375,21 @@ func formatLevel(g *Generator, n *node) string {
 	var s []byte
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
+			closed := n.state.toggle
 			if g.walls.At(int8(x), int8(y)) {
 				s = append(s, "##"...)
 			} else if n.state.blocks.At(int8(x), int8(y)) {
-				s = append(s, "[]"...)
+				c := byte(']')
+				if g.toggle[closed].At(int8(x), int8(y)) {
+					c = '%'
+				} else if g.toggle[closed^1].At(int8(x), int8(y)) {
+					c = ':'
+				}
+				s = append(s, '[', c)
+			} else if g.toggle[closed].At(int8(x), int8(y)) {
+				s = append(s, "%%"...)
+			} else if g.toggle[closed^1].At(int8(x), int8(y)) {
+				s = append(s, "::"...)
 			} else if x == int(n.state.pos.X) && y == int(n.state.pos.Y) {
 				s = append(s, "$ "...)
 			} else {
