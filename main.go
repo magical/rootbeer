@@ -44,16 +44,14 @@ func main() {
 		foundPlayer := false
 		for y := 0; y < height; y++ {
 			for x := 0; x < width; x++ {
-				if level.Tiles[y][x] == Wall {
+				p := Point{X: int8(x), Y: int8(y)}
+				switch level.Tiles[y][x] {
+				case Wall:
 					g.walls.Set(int8(x), int8(y), true)
-				}
-				if level.Tiles[y][x] == Teleport {
-					g.sink.X = int8(x)
-					g.sink.Y = int8(y)
-				}
-				if level.Tiles[y][x] == Player {
-					g.startPos.X = int8(x)
-					g.startPos.Y = int8(y)
+				case Teleport:
+					g.sink = p
+				case Player:
+					g.startPos = p
 					foundPlayer = true
 				}
 			}
