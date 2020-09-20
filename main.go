@@ -113,6 +113,8 @@ func main() {
 }
 
 type Generator struct {
+	// TODO: add a separate field for unenterable tiles
+	// and let walls just be walls
 	walls    Bitmap
 	sink     Point // where the block have to go (come from)
 	startPos Point
