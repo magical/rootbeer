@@ -123,6 +123,8 @@ const (
 	Dirt
 	Popup
 	Fire
+	ToggleWall
+	ToggleFloor
 )
 
 func (t Tile) encoding() uint8 {
@@ -149,6 +151,10 @@ func (t Tile) encoding() uint8 {
 		return 0x2E
 	case Fire:
 		return 0x04
+	case ToggleWall:
+		return 0x25
+	case ToggleFloor:
+		return 0x26
 	default:
 		panic("invalid tile: " + strconv.Itoa(int(t)))
 	}
@@ -278,6 +284,10 @@ func readLevel(s littlebyte.String) (*Level, error) {
 			tile = Dirt
 		case 0x04:
 			tile = Fire
+		case 0x25:
+			tile = ToggleWall
+		case 0x26:
+			tile = ToggleFloor
 		default:
 			// unknown tile
 			if !printedWarning {
