@@ -209,7 +209,7 @@ func (g *Generator) Search() *node {
 			*new = node{
 				state:  no.state,
 				parent: no,
-				len:    no.len + 2,
+				len:    no.len + 1,
 			}
 
 			// flip the toggle walls
