@@ -167,7 +167,7 @@ func (g *Generator) Search() *node {
 		log.Print("\n", formatLevel(g, start))
 	}
 
-	var max *node
+	var max []*node
 	for len(queue) > 0 {
 		no := heap.Pop(&queue).(*node)
 		if _, ok := visited[no.state]; ok {
@@ -178,8 +178,11 @@ func (g *Generator) Search() *node {
 			g.count[no.len]++
 		}
 
-		if max == nil || no.len > max.len {
-			max = no
+		if max == nil || no.len >= max[0].len {
+			if max != nil && no.len > max[0].len {
+				max = max[:0]
+			}
+			max = append(max, no)
 		}
 
 		select {
@@ -187,7 +190,7 @@ func (g *Generator) Search() *node {
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
 			log.Printf("alloc: current %d MB, max %d MB, sys %d MB", m.Alloc/1e6, m.TotalAlloc/1e6, m.Sys/1e6)
-			log.Printf("search: current %d, max %d, visited: %d, queue %d\n%s", no.len, max.len, len(visited), len(queue),
+			log.Printf("search: current %d, max %d, visited: %d, queue %d\n%s", no.len, max[0].len, len(visited), len(queue),
 				no.state.blocks.String())
 		default:
 		}
@@ -293,7 +296,10 @@ func (g *Generator) Search() *node {
 		}
 	}
 	log.Println("visited ", len(visited), "states")
-	return max
+	for _, no := range max {
+		fmt.Println(formatLevel(g, no))
+	}
+	return max[0]
 }
 
 func (s *state) normalize(walls *Bitmap) {
