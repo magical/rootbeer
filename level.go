@@ -125,6 +125,7 @@ const (
 	Fire
 	ToggleWall
 	ToggleFloor
+	ToggleButton
 )
 
 func (t Tile) encoding() uint8 {
@@ -151,6 +152,8 @@ func (t Tile) encoding() uint8 {
 		return 0x2E
 	case Fire:
 		return 0x04
+	case ToggleButton:
+		return 0x23
 	case ToggleWall:
 		return 0x25
 	case ToggleFloor:
@@ -284,6 +287,8 @@ func readLevel(s littlebyte.String) (*Level, error) {
 			tile = Dirt
 		case 0x04:
 			tile = Fire
+		case 0x23:
+			tile = ToggleButton
 		case 0x25:
 			tile = ToggleWall
 		case 0x26:
