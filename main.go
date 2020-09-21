@@ -15,6 +15,7 @@ import (
 func main() {
 	mapflag := flag.String("map", "", "levelset to load walls from [required]")
 	outflag := flag.String("o", "", "file to save generated level to [optional]")
+	solveflag := flag.Bool("solve", false, "solve level instead of generating")
 	progressflag := flag.Bool("progress", false, "show progress")
 	flag.Parse()
 
@@ -25,6 +26,34 @@ func main() {
 
 	var g Generator
 	g.progress = progress
+
+	if *solveflag && *mapflag != "" {
+		data, err := ioutil.ReadFile(*mapflag)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		level, err := DecodeLevel(data)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		var s Solver
+		s.progress = progress
+		s.Init(level)
+		node := s.Search()
+
+		if node != nil && node.len < len(s.count) {
+			fmt.Println("found", s.count[node.len], "solutions of length", node.len)
+		}
+
+		for n := node; n != nil; n = n.parent {
+			fmt.Print(s.formatLevel(n))
+			fmt.Println("-")
+		}
+
+		os.Exit(0)
+	}
 
 	if *mapflag == "" {
 		fmt.Fprintln(os.Stderr, "error: -map flag is required")
