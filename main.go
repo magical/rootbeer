@@ -303,6 +303,39 @@ func reachable(x, y int8, mask1, mask2 *Bitmap) Bitmap {
 	return a
 }
 
+type thinspec struct {
+	N, S, E, W Bitmap
+}
+
+// Return a bitmap of all squares reachable from x,y
+// without visiting mask1 or mask2
+func reachableThin(x, y int8, thin *thinspec, mask1, mask2 *Bitmap) Bitmap {
+	var a Bitmap
+	a.Set(x, y, true)
+	for {
+		prev := uint16(0)
+		changed := uint16(0)
+		for i := 0; i < len(a); i++ {
+			tmp := a[i]
+			// n.b. W is towards the little end, E is towards the big end
+			tmp2 := tmp | (tmp &^ thin.E[i] << 1) | (tmp &^ thin.W[i] >> 1) | prev
+			if i+1 < len(a) {
+				tmp2 |= a[i+1] &^ thin.N[i+1]
+			}
+			tmp2 &^= mask1[i]
+			tmp2 &^= mask2[i]
+			changed |= tmp2 &^ tmp
+			a[i] |= tmp2
+			prev = tmp &^ thin.S[i]
+		}
+
+		if changed == 0 {
+			break
+		}
+	}
+	return a
+}
+
 type node struct {
 	state  state
 	parent *node

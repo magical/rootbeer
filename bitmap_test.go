@@ -52,3 +52,70 @@ func TestReachable(t *testing.T) {
 		}
 	}
 }
+
+var reachableThinTests = []struct {
+	pos       Point
+	mask      Bitmap
+	thin      *thinspec
+	reachable Bitmap
+}{
+	{
+		Point{X: 1, Y: 1},
+		Bitmap{
+			0b11111,
+			0b10001,
+			0b10001,
+			0b10001,
+			0b11111,
+		},
+		// Single square in the middle with thin walls on all 4 inner sides
+		&thinspec{
+			N: Bitmap{0, 0, 0b00100, 0, 0},
+			S: Bitmap{0, 0, 0b00100, 0, 0},
+			E: Bitmap{0, 0, 0b00100, 0, 0},
+			W: Bitmap{0, 0, 0b00100, 0, 0},
+		},
+		Bitmap{
+			0b00000,
+			0b01110,
+			0b01110,
+			0b01110,
+			0b00000,
+		},
+	},
+	{
+		Point{X: 1, Y: 1},
+		Bitmap{
+			0b11111,
+			0b10001,
+			0b10001,
+			0b10001,
+			0b11111,
+		},
+		// Single square in the middle with thin walls on all 4 outer sides
+		&thinspec{
+			N: Bitmap{0, 0, 0, 0b00100, 0},
+			S: Bitmap{0, 0b00100, 0, 0, 0},
+			E: Bitmap{0, 0, 0b00010, 0, 0},
+			W: Bitmap{0, 0, 0b01000, 0, 0},
+		},
+		Bitmap{
+			0b00000,
+			0b01110,
+			0b01010,
+			0b01110,
+			0b00000,
+		},
+	},
+}
+
+func TestReachableThin(t *testing.T) {
+	var zero Bitmap
+	for i, tt := range reachableThinTests {
+		mask := tt.mask
+		r := reachableThin(tt.pos.X, tt.pos.Y, tt.thin, &mask, &zero)
+		if r != tt.reachable {
+			t.Errorf("test %d\n%s\n(thin walls omitted)\nwant:\n%s\ngot:\n%s", i, &tt.mask, &tt.reachable, &r)
+		}
+	}
+}
