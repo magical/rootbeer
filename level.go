@@ -131,6 +131,11 @@ const (
 	ToggleWall
 	ToggleFloor
 	ToggleButton
+	ThinWallN
+	ThinWallS
+	ThinWallE
+	ThinWallW
+	ThinWallSE
 )
 
 func (t Tile) encoding() uint8 {
@@ -163,6 +168,16 @@ func (t Tile) encoding() uint8 {
 		return 0x25
 	case ToggleFloor:
 		return 0x26
+	case ThinWallN:
+		return 0x06
+	case ThinWallW:
+		return 0x07
+	case ThinWallS:
+		return 0x08
+	case ThinWallE:
+		return 0x09
+	case ThinWallSE:
+		return 0x30
 	default:
 		panic("invalid tile: " + strconv.Itoa(int(t)))
 	}
@@ -298,6 +313,16 @@ func readLevel(s littlebyte.String) (*Level, error) {
 			tile = ToggleWall
 		case 0x26:
 			tile = ToggleFloor
+		case 0x06:
+			tile = ThinWallN
+		case 0x07:
+			tile = ThinWallW
+		case 0x08:
+			tile = ThinWallS
+		case 0x09:
+			tile = ThinWallE
+		case 0x30:
+			tile = ThinWallSE
 		default:
 			// unknown tile
 			if !printedWarning {
