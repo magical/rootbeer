@@ -304,7 +304,10 @@ func reachable(x, y int8, mask1, mask2 *Bitmap) Bitmap {
 }
 
 type thinspec struct {
-	N, S, E, W Bitmap
+	// NS is a thin wall that prevents travel from north to south on that tile
+	// WS is a thin wall that prevents travel from west to east on that tile
+	// n.b. W is towards the low bits, E is towards the high bits
+	NS, WE Bitmap
 }
 
 // Return a bitmap of all squares reachable from x,y
@@ -317,16 +320,16 @@ func reachableThin(x, y int8, thin *thinspec, mask1, mask2 *Bitmap) Bitmap {
 		changed := uint16(0)
 		for i := 0; i < len(a); i++ {
 			tmp := a[i]
-			// n.b. W is towards the little end, E is towards the big end
-			tmp2 := tmp | (tmp &^ thin.E[i] << 1) | (tmp &^ thin.W[i] >> 1) | prev
+			// n.b. W is towards the low bits, E is towards the high bits
+			tmp2 := tmp | (tmp &^ thin.WE[i] << 1) | (tmp >> 1 &^ thin.WE[i]) | prev
 			if i+1 < len(a) {
-				tmp2 |= a[i+1] &^ thin.N[i+1]
+				tmp2 |= a[i+1] &^ thin.NS[i]
 			}
 			tmp2 &^= mask1[i]
 			tmp2 &^= mask2[i]
 			changed |= tmp2 &^ tmp
 			a[i] |= tmp2
-			prev = tmp &^ thin.S[i]
+			prev = tmp &^ thin.NS[i]
 		}
 
 		if changed == 0 {

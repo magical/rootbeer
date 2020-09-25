@@ -68,36 +68,10 @@ var reachableThinTests = []struct {
 			0b10001,
 			0b11111,
 		},
-		// Single square in the middle with thin walls on all 4 inner sides
+		// Single square in the middle with thin walls on all 4 sides
 		&thinspec{
-			N: Bitmap{0, 0, 0b00100, 0, 0},
-			S: Bitmap{0, 0, 0b00100, 0, 0},
-			E: Bitmap{0, 0, 0b00100, 0, 0},
-			W: Bitmap{0, 0, 0b00100, 0, 0},
-		},
-		Bitmap{
-			0b00000,
-			0b01110,
-			0b01110,
-			0b01110,
-			0b00000,
-		},
-	},
-	{
-		Point{X: 1, Y: 1},
-		Bitmap{
-			0b11111,
-			0b10001,
-			0b10001,
-			0b10001,
-			0b11111,
-		},
-		// Single square in the middle with thin walls on all 4 outer sides
-		&thinspec{
-			N: Bitmap{0, 0, 0, 0b00100, 0},
-			S: Bitmap{0, 0b00100, 0, 0, 0},
-			E: Bitmap{0, 0, 0b00010, 0, 0},
-			W: Bitmap{0, 0, 0b01000, 0, 0},
+			NS: Bitmap{0, 0b00100, 0b00100, 0, 0},
+			WE: Bitmap{0, 0, 0b00110, 0, 0},
 		},
 		Bitmap{
 			0b00000,
