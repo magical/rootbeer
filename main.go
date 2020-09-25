@@ -53,6 +53,8 @@ func main() {
 				case Player:
 					g.startPos = p
 					foundPlayer = true
+				case ThinWallN, ThinWallW, ThinWallE, ThinWallS, ThinWallSE:
+					g.setThin(x, y, level.Tiles[y][x])
 				}
 			}
 		}
@@ -80,6 +82,8 @@ func main() {
 	fmt.Println(node.state.pos)
 	for n := node; n != nil; n = n.parent {
 		fmt.Print(formatLevel(&g, n))
+		r := reachableThin(n.state.pos.X, n.state.pos.Y, &g.thin, &g.walls, &n.state.blocks)
+		fmt.Print(&r)
 		fmt.Println("-")
 	}
 	//pretty.Println(node.state)
@@ -96,6 +100,13 @@ func main() {
 					level.Tiles[y][x] = Wall
 				} else if node.state.blocks.At(int8(x), int8(y)) {
 					level.Tiles[y][x] = Block
+				}
+				if g.thintiles[y][x] != Floor {
+					if level.Tiles[y][x] == Floor {
+						level.Tiles[y][x] = g.thintiles[y][x]
+					} else {
+						level.Subtiles[y][x] = g.thintiles[y][x]
+					}
 				}
 			}
 		}
@@ -114,8 +125,14 @@ type Generator struct {
 	// TODO: add a separate field for unenterable tiles
 	// and let walls just be walls
 	walls    Bitmap
+	thin     thinspec
 	sink     Point // where the block have to go (come from)
 	startPos Point
+
+	// original thin wall tiles because we collapse thin walls so we don't
+	// know where the originals were
+	// TODO: store more kinds of original tiles
+	thintiles [32][32]Tile
 
 	count    [256]int
 	progress <-chan time.Time
@@ -151,7 +168,7 @@ func (g *Generator) Search() *node {
 	var blocks []Point
 	start.state.blocks.Set(g.sink.X, g.sink.Y, true)
 	start.state.pos = g.startPos
-	start.state.normalize(&g.walls)
+	start.state.normalize(&g.walls, &g.thin)
 	log.Print("\n", formatLevel(g, start))
 	queue = append(queue, start)
 	for len(queue) > 0 {
@@ -179,7 +196,7 @@ func (g *Generator) Search() *node {
 		}
 
 		// find reachable squares
-		r := reachable(no.state.pos.X, no.state.pos.Y, &g.walls, &no.state.blocks)
+		r := reachableThin(no.state.pos.X, no.state.pos.Y, &g.thin, &g.walls, &no.state.blocks)
 
 		// find blocks
 		blocks = blocks[:0]
@@ -214,6 +231,9 @@ func (g *Generator) Search() *node {
 				if !r.At(int8(x+dx), int8(y+dy)) {
 					continue
 				}
+				if g.hasThin(x, y, dx, dy) {
+					continue
+				}
 
 				// block lines metric:
 				// pulling a block multiple squares in one direction
@@ -230,6 +250,9 @@ func (g *Generator) Search() *node {
 					}
 					if !r.At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
 						break
+					}
+					if g.hasThin(x+dx*j, y+dy*j, dx, dy) {
+						continue
 					}
 
 					new := newnode()
@@ -249,7 +272,7 @@ func (g *Generator) Search() *node {
 					new.state.pos.X = int8(x + dx*(j+1))
 					new.state.pos.Y = int8(y + dy*(j+1))
 
-					new.state.normalize(&g.walls)
+					new.state.normalize(&g.walls, &g.thin)
 
 					// add to the heap
 					if _, ok := visited[new.state]; ok {
@@ -264,14 +287,50 @@ func (g *Generator) Search() *node {
 	return max
 }
 
-func (s *state) normalize(walls *Bitmap) {
-	r := reachable(s.pos.X, s.pos.Y, &s.blocks, walls)
+func (s *state) normalize(walls *Bitmap, thin *thinspec) {
+	r := reachableThin(s.pos.X, s.pos.Y, thin, &s.blocks, walls)
 	for i := range r {
 		if r[i] != 0 {
 			s.pos.Y = int8(i)
 			s.pos.X = int8(bits.Len16(r[i]) - 1)
 			return
 		}
+	}
+}
+
+// whether there is a thin wall blocking movement in the given direction.
+// precondition: move source and destination are in bounds
+func (g *Generator) hasThin(x, y, dx, dy int) bool {
+	// probably gonna want a more convenient way to compute this
+	// if we're moving in the positive direction, check the current square
+	// if we're moving in the negative direction, check the destination square
+	// (because the thinspec always assumes positive movement)
+	if dx == 0 {
+		return g.thin.NS.At(int8(x), int8(y+((dy-1)/2)))
+	}
+	return g.thin.WE.At(int8(x+((dx-1)/2)), int8(y))
+}
+
+func (g *Generator) setThin(x, y int, t Tile) {
+	g.thintiles[y][x] = t
+	switch t {
+	case ThinWallSE:
+		g.thin.NS.Set(int8(x), int8(y), true)
+		g.thin.WE.Set(int8(x), int8(y), true)
+	case ThinWallN:
+		if y > 0 {
+			g.thin.NS.Set(int8(x), int8(y-1), true)
+		}
+	case ThinWallS:
+		g.thin.NS.Set(int8(x), int8(y), true)
+	case ThinWallW:
+		if x > 0 {
+			g.thin.WE.Set(int8(x-1), int8(y), true)
+		}
+	case ThinWallE:
+		g.thin.WE.Set(int8(x), int8(y), true)
+	default:
+		panic("setThin: invalid thin wall tile")
 	}
 }
 
