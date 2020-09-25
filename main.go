@@ -148,6 +148,7 @@ func (g *Generator) Search() *node {
 	var queue nodeQueue // []*node
 	var start = new(node)
 	var max = start
+	var blocks []Point
 	start.state.blocks.Set(g.sink.X, g.sink.Y, true)
 	start.state.pos = g.startPos
 	start.state.normalize(&g.walls)
@@ -180,77 +181,81 @@ func (g *Generator) Search() *node {
 		// find reachable squares
 		r := reachable(no.state.pos.X, no.state.pos.Y, &g.walls, &no.state.blocks)
 
-		// find valid moves
+		// find blocks
+		blocks = blocks[:0]
 		for i, bl := range no.state.blocks {
 			/// TODO: maybe mask bl with r?
-
-			// iterate over each block
 			for bl != 0 {
 				y := i
 				x := bits.Len16(bl) - 1
 				bl = bl & ((1 << x) - 1) // clear current block
-
 				if !no.state.blocks.At(int8(x), int8(y)) {
 					panic("block does not exist")
 				}
+				blocks = append(blocks, Point{X: int8(x), Y: int8(y)})
+			}
+		}
 
-				for _, d := range dirs {
-					dx, dy := int(d.X), int(d.Y)
+		// iterate over each block
+		// and find valid moves
+		for _, p := range blocks {
+			x, y := int(p.X), int(p.Y)
+			for _, d := range dirs {
+				dx, dy := int(d.X), int(d.Y)
 
-					// square beside the block must be
-					// reachable and not blocked
-					if x+dx < 0 || x+dx >= width {
+				// square beside the block must be
+				// reachable and not blocked
+				if x+dx < 0 || x+dx >= width {
+					continue
+				}
+				if y+dy < 0 || y+dy >= height {
+					continue
+				}
+				if !r.At(int8(x+dx), int8(y+dy)) {
+					continue
+				}
+
+				// block lines metric:
+				// pulling a block multiple squares in one direction
+				// counts as a single move
+				for j := 1; j < maxPush+1; j++ {
+					// in order to pull,
+					// (j+1) squares in the pull direction
+					// must be reachable & clear
+					if x+dx*(j+1) < 0 || x+dx*(j+1) >= width {
+						break
+					}
+					if y+dy*(j+1) < 0 || y+dy*(j+1) >= height {
+						break
+					}
+					if !r.At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
+						break
+					}
+
+					new := newnode()
+					*new = node{
+						state:  no.state,
+						parent: no,
+						len:    no.len + 1,
+					}
+					// set the new block position
+					new.state.blocks.Set(int8(x), int8(y), false)
+					new.state.blocks.Set(int8(x+dx*j), int8(y+dy*j), true)
+
+					// there is always a block at the sink
+					new.state.blocks.Set(g.sink.X, g.sink.Y, true)
+
+					// update pos
+					new.state.pos.X = int8(x + dx*(j+1))
+					new.state.pos.Y = int8(y + dy*(j+1))
+
+					new.state.normalize(&g.walls)
+
+					// add to the heap
+					if _, ok := visited[new.state]; ok {
 						continue
 					}
-					if y+dy < 0 || y+dy >= height {
-						continue
-					}
-					if !r.At(int8(x+dx), int8(y+dy)) {
-						continue
-					}
-
-					// block lines metric:
-					// pulling a block multiple squares in one direction
-					// counts as a single move
-					for j := 1; j < maxPush+1; j++ {
-						// in order to pull,
-						// (j+1) squares in the pull direction
-						// must be reachable & clear
-						if x+dx*(j+1) < 0 || x+dx*(j+1) >= width {
-							break
-						}
-						if y+dy*(j+1) < 0 || y+dy*(j+1) >= height {
-							break
-						}
-						if !r.At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
-							break
-						}
-
-						new := newnode()
-						*new = node{
-							state:  no.state,
-							parent: no,
-							len:    no.len + 1,
-						}
-						// set the new block position
-						new.state.blocks.Set(int8(x), int8(y), false)
-						new.state.blocks.Set(int8(x+dx*j), int8(y+dy*j), true)
-
-						// there is always a block at the sink
-						new.state.blocks.Set(g.sink.X, g.sink.Y, true)
-
-						// update pos
-						new.state.pos.X = int8(x + dx*(j+1))
-						new.state.pos.Y = int8(y + dy*(j+1))
-
-						new.state.normalize(&g.walls)
-
-						// add to the heap
-						if _, ok := visited[new.state]; ok {
-							continue
-						}
-						heap.Push(&queue, new)
-					}
+					heap.Push(&queue, new)
 				}
 			}
 		}
