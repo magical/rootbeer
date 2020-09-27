@@ -58,7 +58,7 @@ func main() {
 				case ToggleFloor:
 					g.toggle[1].Set(p.X, p.Y, true)
 				case ToggleButton:
-					g.button = p
+					g.button = append(g.button, p)
 				}
 			}
 		}
@@ -123,7 +123,7 @@ type Generator struct {
 	toggle   [2]Bitmap // toggle walls/floors
 	sink     Point     // where the block have to go (come from)
 	startPos Point
-	button   Point // toggle button pos
+	button   []Point // toggle button pos
 
 	count    [256]int
 	progress <-chan time.Time
@@ -253,22 +253,25 @@ func (g *Generator) Search() *node {
 		// - can flick blocks off toggle walls in MSCC
 		// - let blocks press the button
 
-		if r.At(g.button.X, g.button.Y) {
-			new := newnode()
-			*new = node{
-				state:  no.state,
-				parent: no,
-				len:    no.len + 1,
+		// press toggle buttons
+		for _, p := range g.button {
+			if r.At(p.X, p.Y) {
+				new := newnode()
+				*new = node{
+					state:  no.state,
+					parent: no,
+					len:    no.len + 1,
+				}
+
+				// flip the toggle walls
+				new.state.toggle ^= 1
+
+				// update pos & normalize
+				new.state.pos = p
+				//new.state.normalize(&nogo[new.state.toggle])
+
+				heap.Push(&queue, new)
 			}
-
-			// flip the toggle walls
-			new.state.toggle ^= 1
-
-			// update pos & normalize
-			new.state.pos = g.button
-			new.state.normalize(&nogo[new.state.toggle])
-
-			heap.Push(&queue, new)
 		}
 
 		// find blocks
