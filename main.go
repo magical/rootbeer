@@ -174,6 +174,50 @@ func (g *Generator) Search() *node {
 		log.Print("\n", formatLevel(g, start))
 	}
 
+	// GRAY BUTTONS
+	// these are the area effect buttons from CC2 -
+	// when you press one, tiles in two squares in each direction are toggled.
+	// we can think of this as each button toggling a 5x5 invert field on and off.
+	// when two buttons are active, the overlapping region cancels out. so the
+	// field acts like a XOR operation. because XOR is associative, it doesn't
+	// matter in which order the buttons are pressed, so we don't have to keep
+	// track of the history of presses, just which buttons are active at the moment.
+	//
+	// because gray buttons are CC2 only, we don't have to worry about flicking
+	// blocks off toggle walls and we don't have to avoid having blocks start
+	// off atop toggle walls/floors.
+	//
+	// we *do* have to worry about blocks pressing buttons during a push,
+	// or about buttons being in the path to a block, since we can't just
+	// stick them in the corner of the level like we can with the green button.
+
+	// :: = toggle floor
+	// %% = toggle wall
+	// o  = button
+	// [] = block
+	// @  = player
+	//
+	// [%] @  _              - can't pull block, since we would be pushing onto a wall
+	// [:] @  _  => :: []  @ - can pull block
+	// [%] @o _  => :: [o] @ - can pull, button swaps walls after push
+	// [:] @o _              - can't pull, impossible
+	// [%] @  o              - same as first case
+	// [:] @  o  => :: [] @o - same as second case, doesn't activate toggle
+	//
+	// []  @: _   - can pull
+	// []  @% _   - can't pull, block would've had to start on a wall but we can't push off a wall
+	// [o] @% _   - can pull, activates toggle
+	// [o] @: _   - can't pull
+	//
+	// toggle buttons only take effect when you (or a block) enters the tile.
+	// button pushes take effect after block pushes.
+	//
+	// so to flip that around, when pulling a block,
+	// - button pushes happen when chip or a block _leaves_ the button tile
+	// - button pushes take effect _before_ block pushes
+	//
+	// also when chip ends a move on a wall or a button i guess we'll have to leave him there
+
 	var max []*node
 	for len(queue) > 0 {
 		no := heap.Pop(&queue).(*node)
