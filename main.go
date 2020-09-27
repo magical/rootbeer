@@ -234,6 +234,7 @@ func (g *Generator) Search() *node {
 				if g.hasThin(x, y, dx, dy) {
 					continue
 				}
+				// TODO: implement flicking?
 
 				// block lines metric:
 				// pulling a block multiple squares in one direction
