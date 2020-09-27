@@ -82,8 +82,8 @@ func main() {
 	fmt.Println(node.state.pos)
 	for n := node; n != nil; n = n.parent {
 		fmt.Print(formatLevel(&g, n))
-		r := reachableThin(n.state.pos.X, n.state.pos.Y, &g.thin, &g.walls, &n.state.blocks)
-		fmt.Print(&r)
+		//r := reachableThin(n.state.pos.X, n.state.pos.Y, &g.thin, &g.walls, &n.state.blocks)
+		//fmt.Print(&r)
 		fmt.Println("-")
 	}
 	//pretty.Println(node.state)
