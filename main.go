@@ -154,18 +154,21 @@ const maxBlocks = 100
 const maxPush = 1
 
 func (g *Generator) Search() *node {
-	var nogo [2]Bitmap
-	nogo[0] = g.walls.Union(g.toggle[0])
-	nogo[1] = g.walls.Union(g.toggle[1])
-
 	var visited = make(map[state]struct{})
 	var queue nodeQueue // []*node
 	var blocks []Point
 	var interactible Bitmap
 
-	// init the queue with two start states:
-	// one for each toggle state
-	for t := uint8(0); t < 2; t++ {
+	// init the states:
+	// 2^n of them, one for each toggle state
+	var nogo = new([256]Bitmap)
+	for t := uint8(0); t < 1<<len(g.button); t++ {
+		nogo[t] = g.walls
+		g.applyToggles(&nogo[t], t)
+	}
+
+	// init the queue with one state for each toggle state
+	for t := uint8(1); t < 1<<len(g.button); t++ {
 		start := new(node)
 		start.state.blocks.Set(g.sink.X, g.sink.Y, true)
 		start.state.pos = g.startPos
@@ -333,10 +336,12 @@ func (g *Generator) Search() *node {
 
 				newToggleState := no.state.toggle
 				if interactible.At(int8(x), int8(y)) {
-					newToggleState ^= 1
+					j := g.buttonAt(int8(x), int8(y))
+					newToggleState ^= 1 << uint(j)
 				}
 				if interactible.At(int8(x+dx), int8(y+dy)) {
-					newToggleState ^= 1
+					j := g.buttonAt(int8(x+dx), int8(y+dy))
+					newToggleState ^= 1 << uint(j)
 				}
 
 				// block can't be on a toggle wall unless chip is on a button
@@ -401,6 +406,53 @@ func (g *Generator) Search() *node {
 		fmt.Println(formatLevel(g, no))
 	}
 	return max[0]
+}
+
+// apply area effect toggles to the state
+// not fast
+func (g *Generator) applyToggles(b *Bitmap, t uint8) {
+	// initialize toggle state
+	*b = b.Union(g.toggle[0])
+	// iterate over each square
+	for y := int8(0); y < height; y++ {
+		for x := int8(0); x < width; x++ {
+			// skip non-toggle wall/floor squares
+			if !g.hasToggleTerrain(x, y) {
+				continue
+			}
+			// flip the state at this cell if necessary
+			if g.isToggleFlipped(x, y, t) {
+				b.Set(x, y, !b.At(x, y))
+			}
+		}
+	}
+}
+
+// reports whether the toggle wall or floor at x,y is flipped from its initial state given the current toggle state
+func (g *Generator) isToggleFlipped(x, y int8, t uint8) bool {
+	flipped := 0
+	// iterate over active buttons
+	for i, pos := range g.button {
+		if t>>i&1 != 0 {
+			// if we are within a 5x5 area around the button...
+			if pos.X-2 <= x && x <= pos.X+2 &&
+				pos.Y-2 <= y && y <= pos.Y+2 {
+				// invert the toggle state at this cell
+				flipped ^= 1
+			}
+		}
+	}
+	return flipped != 0
+}
+
+// returns -1 if not found
+func (g *Generator) buttonAt(x, y int8) int {
+	for i, p := range g.button {
+		if p.X == x && p.Y == y {
+			return i
+		}
+	}
+	return -1
 }
 
 func (s *state) nblocks() int {
@@ -493,7 +545,10 @@ func formatLevel(g *Generator, n *node) string {
 	var s []byte
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			closed := n.state.toggle
+			closed := 0
+			if g.isToggleFlipped(int8(x), int8(y), n.state.toggle) {
+				closed ^= 1
+			}
 			if g.walls.At(int8(x), int8(y)) {
 				s = append(s, "##"...)
 			} else if n.state.blocks.At(int8(x), int8(y)) {
@@ -521,4 +576,8 @@ func formatLevel(g *Generator, n *node) string {
 		s = append(s, '\n')
 	}
 	return string(s)
+}
+
+func (g *Generator) hasToggleTerrain(x, y int8) bool {
+	return g.toggle[0].At(x, y) || g.toggle[1].At(x, y)
 }
