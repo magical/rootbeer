@@ -86,6 +86,7 @@ func main() {
 	fmt.Println(node.state.pos)
 	for n := node; n != nil; n = n.parent {
 		fmt.Print(formatLevel(&g, n))
+		fmt.Println(n.state.nblocks())
 		fmt.Println("-")
 	}
 	//pretty.Println(node.state)
