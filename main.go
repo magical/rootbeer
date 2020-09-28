@@ -249,6 +249,11 @@ func (g *Generator) Search() *node {
 		// find reachable squares
 		r := reachable(no.state.pos.X, no.state.pos.Y, &nogo[no.state.toggle], &no.state.blocks)
 
+		// note: although the player might have to step on a button in order to
+		// reach a square, they can always press it again (unless it traps them i guess)
+		// in order to keep the walls the same, so we can ignore that when
+		// considering which blocks are reachable
+
 		// TODO:
 		// - can flick blocks off toggle walls in MSCC
 		// - let blocks press the button
@@ -350,6 +355,11 @@ func (g *Generator) Search() *node {
 					new.state.pos.X = int8(x + dx*(j+1))
 					new.state.pos.Y = int8(y + dy*(j+1))
 
+					// normalize
+					// it's fine to do this, even though stepping on the button
+					// changes state:
+					// - either there's a free square adjacent, in which case we can press it again
+					// - or there's not, in which case normalizing won't change anything
 					new.state.normalize(&nogo[new.state.toggle])
 
 					// add to the heap
