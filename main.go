@@ -96,16 +96,33 @@ func main() {
 	if *outflag != "" {
 		var level Level
 		level.Title = "Computer"
+		push := func(y, x int, t Tile) {
+			if level.Tiles[y][x] != Floor {
+				level.Subtiles[y][x] = level.Tiles[y][x]
+			}
+			level.Tiles[y][x] = t
+		}
 		for y := 0; y < height; y++ {
 			for x := 0; x < width; x++ {
+				closed := 0
+				if g.isToggleFlipped(int8(x), int8(y), node.state.toggle) {
+					closed ^= 1
+				}
 				if g.walls.At(int8(x), int8(y)) {
 					level.Tiles[y][x] = Wall
-				} else if node.state.blocks.At(int8(x), int8(y)) {
-					level.Tiles[y][x] = Block
+				} else if g.toggle[closed].At(int8(x), int8(y)) {
+					level.Tiles[y][x] = ToggleWall
+				} else if g.toggle[closed^1].At(int8(x), int8(y)) {
+					level.Tiles[y][x] = ToggleFloor
+				} else if g.buttonAt(int8(x), int8(y)) >= 0 {
+					level.Tiles[y][x] = ToggleButton
+				}
+				if node.state.blocks.At(int8(x), int8(y)) {
+					push(y, x, Block)
 				}
 			}
 		}
-		level.Tiles[node.state.pos.Y][node.state.pos.X] = Player
+		push(int(node.state.pos.Y), int(node.state.pos.X), Player)
 		level.Tiles[g.sink.Y][g.sink.X] = Teleport
 		err := SaveLevel(*outflag, &level)
 		if err != nil {
