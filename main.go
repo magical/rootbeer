@@ -296,6 +296,12 @@ func (g *Generator) Search() *node {
 			for _, d := range dirs {
 				dx, dy := int(d.X), int(d.Y)
 
+				// block cant be on top of a wall
+				if nogo[no.state.toggle].At(int8(x), int8(y)) {
+					// XXX unless we're stepping on a button
+					continue
+				}
+
 				// square beside the block must be
 				// reachable and not blocked
 				if x+dx < 0 || x+dx >= width {
