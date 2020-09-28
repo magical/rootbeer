@@ -312,7 +312,6 @@ func (g *Generator) Search() *node {
 			for _, d := range dirs {
 				dx, dy := int(d.X), int(d.Y)
 
-
 				// square beside the block must be
 				// reachable and not blocked
 				if x+dx < 0 || x+dx >= width {
@@ -326,16 +325,18 @@ func (g *Generator) Search() *node {
 				}
 
 				doToggle := false
+				newToggleState := no.state.toggle
 				if bool(interactible.At(int8(x), int8(y))) != bool(interactible.At(int8(x+dx), int8(y+dy))) {
 					doToggle = true
+					newToggleState ^= 1
 				}
 
 				if !doToggle {
-					// block can only be on top of a wall if chip is on a button
+					// block can't be on a toggle wall unless chip is on a button
 					if nogo[no.state.toggle].At(int8(x), int8(y)) {
 						continue
 					}
-					// chip can only be on top of a wall if the block is on a button
+					// chip can't be on a toggle wall unless the block is on a button
 					if nogo[no.state.toggle].At(int8(x+dx), int8(y+dy)) {
 						continue
 					}
@@ -361,7 +362,9 @@ func (g *Generator) Search() *node {
 					if y+dy*(j+1) < 0 || y+dy*(j+1) >= height {
 						continue
 					}
-					if !r.At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
+					// chips' destination tile must be reachable given the new toggle state
+					if nogo[newToggleState].At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) ||
+						no.state.blocks.At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
 						continue
 					}
 
@@ -378,6 +381,10 @@ func (g *Generator) Search() *node {
 					// there is always a block at the sink
 					if new.state.nblocks() < maxBlocks {
 						new.state.blocks.Set(g.sink.X, g.sink.Y, true)
+					}
+
+					if doToggle {
+						new.state.toggle ^= 1
 					}
 
 					// update pos
