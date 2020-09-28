@@ -283,6 +283,8 @@ func (g *Generator) Search() *node {
 		// TODO:
 		// - can flick blocks off toggle walls in MSCC
 
+		// FIXME: make sure chip can move before pressing buttons
+
 		// press toggle buttons
 		for _, p := range g.button {
 			if r.At(p.X, p.Y) {
@@ -404,6 +406,13 @@ func (g *Generator) Search() *node {
 					}
 
 					new.state.toggle = newToggleState
+
+					// if we end up on a toggle, activate it
+					// this can matter if we are trapped afterwards
+					if interactible.At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
+						k := g.buttonAt(int8(x+dx*(j+1)), int8(y+dy*(j+1)))
+						new.state.toggle ^= 1 << uint(k)
+					}
 
 					// update pos
 					new.state.pos.X = int8(x + dx*(j+1))
