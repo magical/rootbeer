@@ -147,7 +147,7 @@ var dirs = [4]Point{
 	{-1, 0}, {+1, 0}, {0, -1}, {0, +1},
 }
 
-const maxBlocks = 8
+const maxBlocks = 100
 
 // number of squares to consider during a block line
 // if set to 1 this becomes the normal push metric
