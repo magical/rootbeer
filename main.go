@@ -261,7 +261,6 @@ func (g *Generator) Search() *node {
 
 		// TODO:
 		// - can flick blocks off toggle walls in MSCC
-		// - let blocks press the button
 
 		// press toggle buttons
 		for _, p := range g.button {
