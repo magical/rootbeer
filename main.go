@@ -272,6 +272,10 @@ func (g *Generator) Search() *node {
 				new.state.toggle ^= 1
 
 				// update pos & normalize
+				// it's fine to normalize, even though stepping on the button
+				// changes state:
+				// - either there's a free square adjacent, in which case we can press it again
+				// - or there's not, in which case normalizing won't change anything
 				new.state.pos = p
 				new.state.normalize(&nogo[new.state.toggle])
 
@@ -357,11 +361,6 @@ func (g *Generator) Search() *node {
 					new.state.pos.X = int8(x + dx*(j+1))
 					new.state.pos.Y = int8(y + dy*(j+1))
 
-					// normalize
-					// it's fine to do this, even though stepping on the button
-					// changes state:
-					// - either there's a free square adjacent, in which case we can press it again
-					// - or there's not, in which case normalizing won't change anything
 					new.state.normalize(&nogo[new.state.toggle])
 
 					// add to the heap
