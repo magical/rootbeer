@@ -268,7 +268,7 @@ func (g *Generator) Search() *node {
 
 				// update pos & normalize
 				new.state.pos = p
-				//new.state.normalize(&nogo[new.state.toggle])
+				new.state.normalize(&nogo[new.state.toggle])
 
 				heap.Push(&queue, new)
 			}
