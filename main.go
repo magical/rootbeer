@@ -324,31 +324,29 @@ func (g *Generator) Search() *node {
 					continue
 				}
 
-				doToggle := false
+				// the way pushing interacts with button presses,
+				// 1) first we push the block
+				// 2) then button presses apply
+				// so when figuring out if we can pull,
+				// we have to do it backwards: first work
+				// out the new toggle state, then see if
+				// anything is blocked under that new state
+
 				newToggleState := no.state.toggle
-				if bool(interactible.At(int8(x), int8(y))) != bool(interactible.At(int8(x+dx), int8(y+dy))) {
-					doToggle = true
+				if interactible.At(int8(x), int8(y)) {
+					newToggleState ^= 1
+				}
+				if interactible.At(int8(x+dx), int8(y+dy)) {
 					newToggleState ^= 1
 				}
 
-				if !doToggle {
-					// block can't be on a toggle wall unless chip is on a button
-					if nogo[no.state.toggle].At(int8(x), int8(y)) {
-						continue
-					}
-					// chip can't be on a toggle wall unless the block is on a button
-					if nogo[no.state.toggle].At(int8(x+dx), int8(y+dy)) {
-						continue
-					}
-				} else {
-					// block can't be on top of a toggle floor
-					if nogo[no.state.toggle^1].At(int8(x), int8(y)) {
-						continue
-					}
-					// chip can't be on a toggle floor
-					if nogo[no.state.toggle^1].At(int8(x+dx), int8(y+dy)) {
-						continue
-					}
+				// block can't be on a toggle wall unless chip is on a button
+				if nogo[newToggleState].At(int8(x), int8(y)) {
+					continue
+				}
+				// chip can't be on a toggle wall unless the block is on a button
+				if nogo[newToggleState].At(int8(x+dx), int8(y+dy)) {
+					continue
 				}
 
 				{
@@ -383,9 +381,7 @@ func (g *Generator) Search() *node {
 						new.state.blocks.Set(g.sink.X, g.sink.Y, true)
 					}
 
-					if doToggle {
-						new.state.toggle ^= 1
-					}
+					new.state.toggle = newToggleState
 
 					// update pos
 					new.state.pos.X = int8(x + dx*(j+1))
