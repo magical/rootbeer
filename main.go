@@ -161,6 +161,7 @@ func (g *Generator) Search() *node {
 	var visited = make(map[state]struct{})
 	var queue nodeQueue // []*node
 	var blocks []Point
+	var interactible Bitmap
 
 	// init the queue with two start states:
 	// one for each toggle state
@@ -172,6 +173,10 @@ func (g *Generator) Search() *node {
 		start.state.normalize(&nogo[t])
 		heap.Push(&queue, start)
 		log.Print("\n", formatLevel(g, start))
+	}
+
+	for _, p := range g.button {
+		interactible.Set(p.X, p.Y, true)
 	}
 
 	// GRAY BUTTONS
@@ -307,11 +312,6 @@ func (g *Generator) Search() *node {
 			for _, d := range dirs {
 				dx, dy := int(d.X), int(d.Y)
 
-				// block cant be on top of a wall
-				if nogo[no.state.toggle].At(int8(x), int8(y)) {
-					// XXX unless we're stepping on a button
-					continue
-				}
 
 				// square beside the block must be
 				// reachable and not blocked
@@ -325,21 +325,44 @@ func (g *Generator) Search() *node {
 					continue
 				}
 
-				// block lines metric:
-				// pulling a block multiple squares in one direction
-				// counts as a single move
-				for j := 1; j < maxPush+1; j++ {
+				doToggle := false
+				if bool(interactible.At(int8(x), int8(y))) != bool(interactible.At(int8(x+dx), int8(y+dy))) {
+					doToggle = true
+				}
+
+				if !doToggle {
+					// block can only be on top of a wall if chip is on a button
+					if nogo[no.state.toggle].At(int8(x), int8(y)) {
+						continue
+					}
+					// chip can only be on top of a wall if the block is on a button
+					if nogo[no.state.toggle].At(int8(x+dx), int8(y+dy)) {
+						continue
+					}
+				} else {
+					// block can't be on top of a toggle floor
+					if nogo[no.state.toggle^1].At(int8(x), int8(y)) {
+						continue
+					}
+					// chip can't be on a toggle floor
+					if nogo[no.state.toggle^1].At(int8(x+dx), int8(y+dy)) {
+						continue
+					}
+				}
+
+				{
+					const j = 1
 					// in order to pull,
 					// (j+1) squares in the pull direction
 					// must be reachable & clear
 					if x+dx*(j+1) < 0 || x+dx*(j+1) >= width {
-						break
+						continue
 					}
 					if y+dy*(j+1) < 0 || y+dy*(j+1) >= height {
-						break
+						continue
 					}
 					if !r.At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
-						break
+						continue
 					}
 
 					new := newnode()
@@ -387,6 +410,9 @@ func (s *state) nblocks() int {
 }
 
 func (s *state) normalize(walls *Bitmap) {
+	if walls.At(s.pos.X, s.pos.Y) {
+		return
+	}
 	r := reachable(s.pos.X, s.pos.Y, &s.blocks, walls)
 	for i := range r {
 		if r[i] != 0 {
