@@ -275,7 +275,9 @@ func (g *Generator) Search() *node {
 				new.state.pos = p
 				new.state.normalize(&nogo[new.state.toggle])
 
-				heap.Push(&queue, new)
+				if _, haveVisited := visited[new.state]; !haveVisited {
+					heap.Push(&queue, new)
+				}
 			}
 		}
 
@@ -363,10 +365,9 @@ func (g *Generator) Search() *node {
 					new.state.normalize(&nogo[new.state.toggle])
 
 					// add to the heap
-					if _, ok := visited[new.state]; ok {
-						continue
+					if _, haveVisited := visited[new.state]; !haveVisited {
+						heap.Push(&queue, new)
 					}
-					heap.Push(&queue, new)
 				}
 			}
 		}
