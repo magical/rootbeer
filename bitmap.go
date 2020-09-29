@@ -1,6 +1,6 @@
 package main
 
-type Bitmap [height]uint16
+type Bitmap [height]uint8
 
 const width = 7
 const height = 6

@@ -77,7 +77,7 @@ func main() {
 	}
 
 	for i := range g.walls {
-		g.walls[i] |= 0xFFFF >> width << width
+		g.walls[i] |= ^uint8(0) >> width << width
 	}
 
 	//fmt.Println(g.walls.String())
@@ -324,7 +324,7 @@ func (g *Generator) Search() *node {
 			/// TODO: maybe mask bl with r?
 			for bl != 0 {
 				y := i
-				x := bits.Len16(bl) - 1
+				x := bits.Len8(bl) - 1
 				bl = bl & ((1 << x) - 1) // clear current block
 				if !no.state.blocks.At(int8(x), int8(y)) {
 					panic("block does not exist")
@@ -491,7 +491,7 @@ func (g *Generator) buttonAt(x, y int8) int {
 func (s *state) nblocks() int {
 	n := 0
 	for i := range &s.blocks {
-		n += bits.OnesCount16(s.blocks[i])
+		n += bits.OnesCount8(s.blocks[i])
 	}
 	return n
 }
@@ -504,7 +504,7 @@ func (s *state) normalize(walls *Bitmap) {
 	for i := range r {
 		if r[i] != 0 {
 			s.pos.Y = int8(i)
-			s.pos.X = int8(bits.Len16(r[i]) - 1)
+			s.pos.X = int8(bits.Len8(r[i]) - 1)
 			return
 		}
 	}
@@ -516,8 +516,8 @@ func reachable(x, y int8, mask1, mask2 *Bitmap) Bitmap {
 	var a Bitmap
 	a.Set(x, y, true)
 	for {
-		prev := uint16(0)
-		changed := uint16(0)
+		prev := uint8(0)
+		changed := uint8(0)
 		for i := 0; i < len(a); i++ {
 			tmp := a[i]
 			tmp2 := tmp | tmp<<1 | tmp>>1 | prev
@@ -540,7 +540,7 @@ func reachable(x, y int8, mask1, mask2 *Bitmap) Bitmap {
 
 // reports whether a tile adjecent to pos is in the bitmap
 func (b *Bitmap) hasNeighbor(x, y int8) bool {
-	m := uint16(1) << uint(x)
+	m := uint8(1) << uint(x)
 	if b[y]&((m<<1)|(m>>1)) != 0 {
 		return true
 	}
