@@ -2,8 +2,8 @@ package main
 
 type Bitmap [height]uint16
 
-const width = 9
-const height = 9
+const width = 7
+const height = 6
 
 func (b *Bitmap) Set(x, y int8, v bool) {
 	if v {
