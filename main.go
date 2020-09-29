@@ -283,7 +283,11 @@ func (g *Generator) Search() *node {
 		// TODO:
 		// - can flick blocks off toggle walls in MSCC
 
-		// FIXME: make sure chip can move before pressing buttons
+		// if we can't move, give up
+		// (in particular, don't allow chip to press the button he's standing on)
+		if !r.hasNeighbor(no.state.pos.X, no.state.pos.Y) {
+			continue
+		}
 
 		// press toggle buttons
 		for i, p := range g.button {
@@ -309,6 +313,8 @@ func (g *Generator) Search() *node {
 				if _, haveVisited := visited[new.state]; !haveVisited {
 					heap.Push(&queue, new)
 				}
+
+				// TODO: if any button traps us, block that square and recompute reachable
 			}
 		}
 
@@ -407,12 +413,12 @@ func (g *Generator) Search() *node {
 
 					new.state.toggle = newToggleState
 
-					// if we end up on a toggle, activate it
-					// this can matter if we are trapped afterwards
-					if interactible.At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
-						k := g.buttonAt(int8(x+dx*(j+1)), int8(y+dy*(j+1)))
-						new.state.toggle ^= 1 << uint(k)
-					}
+					//// if we end up on a toggle, activate it
+					//// this can matter if we are trapped afterwards
+					//if interactible.At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
+					//	k := g.buttonAt(int8(x+dx*(j+1)), int8(y+dy*(j+1)))
+					//	new.state.toggle ^= 1 << uint(k)
+					//}
 
 					// update pos
 					new.state.pos.X = int8(x + dx*(j+1))
@@ -530,6 +536,21 @@ func reachable(x, y int8, mask1, mask2 *Bitmap) Bitmap {
 		}
 	}
 	return a
+}
+
+// reports whether a tile adjecent to pos is in the bitmap
+func (b *Bitmap) hasNeighbor(x, y int8) bool {
+	m := uint16(1) << uint(x)
+	if b[y]&((m<<1)|(m>>1)) != 0 {
+		return true
+	}
+	if y > 0 && b[y-1]&m != 0 {
+		return true
+	}
+	if int(y)+1 < len(b) && b[y+1]&m != 0 {
+		return true
+	}
+	return false
 }
 
 type node struct {
