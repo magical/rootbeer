@@ -286,7 +286,7 @@ func (g *Generator) Search() *node {
 		// FIXME: make sure chip can move before pressing buttons
 
 		// press toggle buttons
-		for _, p := range g.button {
+		for i, p := range g.button {
 			if r.At(p.X, p.Y) {
 				new := newnode()
 				*new = node{
@@ -296,7 +296,7 @@ func (g *Generator) Search() *node {
 				}
 
 				// flip the toggle walls
-				new.state.toggle ^= 1
+				new.state.toggle ^= 1 << uint(i)
 
 				// update pos & normalize
 				// it's fine to normalize, even though stepping on the button
