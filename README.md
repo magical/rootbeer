@@ -3,16 +3,49 @@ What is this?
 
 Root Beer Generator, aka `rbg`, aka The Notorious R.B.G., is a generator for sokoban-like puzzles.
 
-The generator works by running a level backwards, pulling blocks from their final positions to the starting positions,
-meaning it only ever deals with solvable game states.
-You give it the walls of the level and it finds the longest solution.
+> finds the hardest arrangement of blocks
+> longest shortest path
+> memory-bound
+> push metric
+> CCL input/output
+
+Given an input level, RBG finds the hardest places to put blocks such that the level is still solvable.
+It was designed for "extraction"-type levels, where the goal is to push all the blocks out of a room.
+It works by running a level backwards, pulling blocks from the goal to the starting positions,
+meaning it only ever considers valid (solvable) game states.
+
+> Unlike other sokoban generators, RBG cannot place walls or other puzzle elements for you.
+> It turns out that level design is hard, subjective, and a problem that humans are good at
+> Doing an exhaustive search for block placement is (relatively) easy - or at least easy to define.
+  It is harder to define what makes a good level - at least in a way a computer can understand.
+  but it is not that hard for humans to learn. and it's much easier when you have a friend who can tell you where to put the blocks.
+
+RBG finds the <dfn>longest shortest path</dfn> in the state space.
+The <dfn>shortest path</dfn> from any state to the goal state is the optimal solution for that state.
+By finding the longest such path, we attempt to maximize the difficulty of the level.
+(Solution length is not a perfect proxy for difficulty, but it works well enough.)
+
+Doing this requires exhaustively exploring (and remembering!) the entire state space of the level;
+as such, the primary bottleneck is memory usage.
+With 2GB of memory, the upper limit is a few million states.
+The details depend on the level, but typically levels of size 8x8 or so (6x6 with popup walls) are computationally tractable to solve.
+The search takes up to a minute and the produces a solution of around 100 pushes max.
+
+The metric RBG uses for solution length is the number of *pushes*, not the number of moves by the player.
+There are a couple reasons for this.
+First, it decreases the size of the state space by allowing us to ignore time spent moving between blocks.
+Second, subjectively, it seems to produce more interesting levels.
+(Some branches (see **Other tiles**) use the <dfn>box lines</dfn> metric, which
+counts pushing one block multiple times in a straight line as a single push.)
+
+> TODO: rewrite
+RBG is designed for "extraction"-type levels, where the goal is to push all the blocks out of a room;
+Note that RBG is designed for "extraction"-type levels, where the goal is to push all the blocks out of a room;
+it does not yet handle traditional sokoban levels, where the goal is to push all the blocks onto designated squares.
+(Support may be added in the future.)
 
 RBG was designed with Chip's Challenge in mind, although it could probably be adapted to other games.
-
 It can read input levels in [CCL format][] and write output in CCL format as well.
-
-> TODO: mention memory usage
-> TODO: number of pushes
 
 [CCL format]: https://wiki.bitbusters.club/CCL
 
@@ -119,8 +152,8 @@ When RBG is finished, it prints out the generated level, the solution, and some 
 
 > TODO: explain the search process better
 
-The first line is the number of states visited during the search.
-This isn't important but it might be interesting.
+The first line is the number of unique states visited during the search —
+not super important but it might be interesting.
 The next line is the length of the optimal solution, followed the player's starting coordinates,
 followed by a textual representation of the final state (the starting block configuration).
 The only difference from the initial state is that there are more blocks (`[]`) and the player is in a different place.
@@ -131,7 +164,7 @@ In this case, RBG visited 1122 and found 3 that were 39 moves away from the inpu
 That is, it found 3 ways to place the blocks (and player) such that the optimal solution requires 39 pushes.
 One of these ways is shown, along with its solution.
 
-Whether or not there are multiple Sometimes (pretty often) there are multiple maximal paths:
+Sometimes there are multiple maximal paths —
 different ways to place the starting blocks that, nevertheless, happen to have solutions of the same length.
 RBG only shows one of these (arbitrarily, the first one it happens to find).
 It would be possible to show the other paths too, but there is currently no user-configurable way to do so.
@@ -145,11 +178,11 @@ As mentioned above, the level isn't directly playable yet;
 we have to add an exit and somewhere for the blocks to go.
 Let's do that now.
 
-The usual approach for these types of levels is to add a row of teleports for the blocks to fill up.
+The usual approach for these types of levels is to add a row of teleports to fire for the blocks to fill up.
 But you can also use water or bombs in a more typical CC style,
 or take the traditional sokoban approach of an alcove full of brown buttons.
 
-Here are a few examples of the finished level:
+Here are a few examples of finished levels:
 
 <img src="img/example1_finished.png" alt="[examples of the three approaches discussed]">
 
@@ -163,14 +196,15 @@ C2M support may be added in the future.
 * The input file must contain only a single level
 * Your tiles should be in the upper left corner of the level
     * Walls are implied at the edges of the level
-        * But note that RBG's level size is much smaller than 32x32
+        * But note that RBG's level size does not cover the whole 32x32 area in a CCL
         * The default size is 10×8 (10 columns, 8 rows), though this is somewhat configurable (see **Changing the level size**)
     * Walls are not necessary along the left and top sides of the level. You can add them anyway but they diminish the usable area.
-    * Walls *may* not be necessary along the bottom and right sides of the level if your level is right at RBG's level size limit, but you might want to add them anyway in case RBG is using a larger level size than you thought. It can't hurt.
+    * Walls *may* not be necessary along the bottom and right sides of the level if your level is right at RBG's level size limit, but you might want to add them anyway in case RBG is configured with a larger level size than you thought.
     * Any tiles outside of the upper left corner are ignored
 * Valid tiles are: floor, wall, player, teleport.
     * player isn't required; if there is no player, a starting point will be chosen automatically.
-    * teleport defines the goal point, where all the blocks have to go. It can be anywhere in the level, but is usually somewhere off to the side. It does have to be within RBG's level area.
+    * teleport defines the goal point, where all the blocks have to go. It can be anywhere in the level area, but is usually somewhere off to the side.
+      Multiple goals are not supported.
     * invalid/unknown tiles are ignored
 * Other tiles (see **Other tiles** section)
     * water - treated as turtles in the `turtles` branch
@@ -208,7 +242,7 @@ Other tiles
 
 Support for other puzzle elements is in various branches of the project.
 This was done to make it easy to experiment, because some puzzle elements are incompatible with each other, and because dealing with interations between elements would add significant complexity in some cases.
-Some of these branches will probably be merged into the main branch at some point.
+Some of these branches will probably be merged into the main branch in the future.
 
 * `thin` - Thin walls. Doesn't support [flicking][].
 
