@@ -163,7 +163,7 @@ C2M support may be added in the future.
 * Your tiles should be in the upper left corner of the level
     * Walls are implied at the edges of the level
         * But note that RBG's level size is much smaller than 32x32
-        * The default size is 8×10 (8 rows, 10 columns), though this is somewhat configurable (see **Changing the level size**)
+        * The default size is 10×8 (10 columns, 8 rows), though this is somewhat configurable (see **Changing the level size**)
     * Walls are not necessary along the left and top sides of the level. You can add them anyway but they diminish the usable area.
     * Walls *may* not be necessary along the bottom and right sides of the level if your level is right at RBG's level size limit, but you might want to add them anyway in case RBG is using a larger level size than you thought. It can't hurt.
     * Any tiles outside of the upper left corner are ignored
