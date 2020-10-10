@@ -235,12 +235,17 @@ Some of these branches will probably be merged into the main branch at some poin
 [block slapping]: https://wiki.bitbusters.club/Block_slapping
 [trap ejection]: https://wiki.bitbusters.club/Trap#Trap_mechanics_in_Lynx
 
+
 License
 -------
 
-RBG is open source software.
+RBG is open source software. You can use it, modify it, and share it under the
+terms of the GNU Affero General Public License, version 3.0.
 
-> TODO
+No warranty, etc.
+
+See [LICENSE](LICENSE) for details.
+
 
 Thanks to...
 -----
