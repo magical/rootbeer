@@ -158,6 +158,7 @@ Input format
 
 The input format is [CCL][CCL format].
 C2M support may be added in the future.
+[CCEdit][] is a good level editor.
 
 * The input file must contain only a single level
 * Your tiles should be in the upper left corner of the level
@@ -175,19 +176,27 @@ C2M support may be added in the future.
     * water - treated as turtles in the `turtles` branch
     * green button - treated as a gray button in the `gray` branch
 
-> TODO: CCL, single level, upper left corner, valid tiles (teleport!), border
-
-
 [CCEdit]: http://cctools.zrax.net/
 
 Changing the level size
 -----------------------
 
-> TODO bitmap.go
-> compile time constant
-> 8 x 10
-> can decrease to save memory
-> probably don't want to increse
+Level size directly impacts memory usage, so it is a compile-time constant, not configurable at runtime.
+
+The default size is 10×8. The size constants are defined at the top of [bitmap.go](bitmap.go):
+
+    const width = 10
+    const height = 8
+
+The most important knob is height: increasing it increases RBG's memory consumption; conversely, decreasing it lowers memory consumption.
+The latter can be useful if you are running into memory limits. The maximum height is 255, theoretically, though you are likely to run out of memory well before that.
+
+Width is less important; changing it doesn't affect memory usage. The maximum width is 16.
+
+Both width and height affect the cropping when loading, saving, and printing levels.
+The also affect the implicit border around the level.
+
+> TODO: should probably just say the max is 16×16
 
 The Zen of RBG
 --------------
@@ -236,5 +245,8 @@ RBG is open source software.
 Thanks to...
 -----
 
-- The Bit Busters Club, for providing encouragement and playtesting
+- The [Bit Busters Club][BBC], for providing encouragement and playtesting
 - pieguy, for creating [computer.dat][] and dropping some hints in chat about how his program worked
+
+[BBC]: https://bitbusters.club/
+[computer.dat]: http://davidstolp.com/old/chips/overall.php?set=computer
