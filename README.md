@@ -3,6 +3,11 @@ What is this?
 
 Root Beer Generator, aka `rbg`, aka The Notorious R.B.G., is a generator for sokoban-like puzzles.
 
+RBG was designed with Chip's Challenge in mind, although it could probably be adapted to other games.
+It can read input levels in [CCL format][] and write output in CCL format as well.
+
+[CCL format]: https://wiki.bitbusters.club/CCL
+
 Given an input level, RBG finds the hardest places to put blocks such that the level is still solvable.
 It was designed for "extraction"-type levels, where the goal is to push all the blocks out of a room.
 It works by running a level backwards, pulling blocks from the goal to the starting positions,
@@ -35,11 +40,6 @@ counts pushing one block multiple times in a straight line as a single push.)
 As already mentioned, RBG generates "extraction"-type levels, where the goal is to push all the blocks out of a room.
 it cannot yet generate traditional sokoban levels, where the goal is to push all the blocks onto designated squares.
 (Support may be added in the future.)
-
-RBG was designed with Chip's Challenge in mind, although it could probably be adapted to other games.
-It can read input levels in [CCL format][] and write output in CCL format as well.
-
-[CCL format]: https://wiki.bitbusters.club/CCL
 
 Usage & Installation
 ----
