@@ -74,8 +74,8 @@ The `-o` flag is optional; if given, the generated level will be written to the 
 
 The `-progress` flag causes RBG to periodically log messages showing the progress of the search.
 
-> 2015/10/21 19:28:00 alloc: current 682 MB, max 783 MB, sys 764 MB
-> 2015/10/21 19:28:00 search: current 42, max 42, visited: 1959159, queue 814745
+    2015/10/21 19:28:00 alloc: current 682 MB, max 783 MB, sys 764 MB
+    2015/10/21 19:28:00 search: current 42, max 42, visited: 1959159, queue 814745
 
 The `alloc` line tells you how much memory is currently allocated from the system (sys), how much we are using (cur), and the cumulative total we have ever allocated (max). Units are SI.
 The `search` line tells you the length of the longest path found so far (max), the length of the path to the state we are currently visiting (cur, always the same as max), the total number of states visited so far (visited), and the number of states waiting to be visited (queue). The search does not stop until the queue is empty.
@@ -108,7 +108,7 @@ It starts off by simply showing the input level in a simple textual format.
 This allows us to verify that it read the level correctly and that no tiles were cut off
 (as would happen if they were outside the defined level bounds).
 
-    2020/10/08 21:39:50
+    2015/10/21 19:28:00
     . . . ##$ []##. .
     ## , , , , ,## , ,
     . . . ##. . ##. .
@@ -126,7 +126,7 @@ Otherwise it will be silent.
 
 When RBG is finished, it prints out the generated level, the solution, and some extra information.
 
-    2020/10/08 21:39:50 visited 1122 states
+    2015/10/21 19:28:01 visited 1122 states
     39
     {2 5}
     . . . ##. []##. .
