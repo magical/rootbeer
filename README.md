@@ -14,8 +14,8 @@ it is difficult to transfer that knowledge into a computer program.
 The program could place elements randomly, but that would be unlikely to lead to interesting levels.
 On the other hand, testing all possible ways of placing blocks is hard to do for a human but relatively easy to write an algorithm for.
 
-RBG finds the <dfn>longest shortest path</dfn> in the state space.
-The <dfn>shortest path</dfn> from any state to the goal state is the optimal solution for that state.
+RBG finds the <i>longest shortest path</i> in the state space.
+The <i>shortest path</i> from any state to the goal state is the optimal solution for that state.
 By finding the longest such path, we attempt to maximize the difficulty of the level.
 (Solution length is not a perfect proxy for difficulty, but it works well enough.)
 
@@ -29,7 +29,7 @@ The metric RBG uses for solution length is the number of *pushes*, not the numbe
 There are a couple reasons for this.
 First, it decreases the size of the state space by allowing us to ignore time spent moving between blocks.
 Second, subjectively, it seems to produce more interesting levels.
-(Some branches (see **Other tiles**) use the <dfn>box lines</dfn> metric, which
+(Some branches (see **Other tiles**) use the <i>box lines</i> metric, which
 counts pushing one block multiple times in a straight line as a single push.)
 
 As already mentioned, RBG generates "extraction"-type levels, where the goal is to push all the blocks out of a room.
