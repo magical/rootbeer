@@ -1,7 +1,7 @@
 What is this?
 =============
 
-Root Beer Generator, aka `rbg`, aka The Notorious R.B.G., is a generator for sokoban-like puzzles.
+Root Beer Generator 🍺, aka `rbg`, aka The Notorious R.B.G., is a generator for sokoban-like puzzles.
 
 RBG was designed with Chip's Challenge in mind, although it could probably be adapted to other games.
 It can read input levels in [CCL format][] and write output in CCL format as well.
