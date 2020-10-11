@@ -51,18 +51,29 @@ It depends only on [github.com/magical/littlebyte](https://github.com/magical/li
 
 1. Clone this repository
 
-        git clone https://github.com/magical/rootbeer ./rootbeer
-        cd rootbeer
-        go get -d .
+    ```bash
+    git clone https://github.com/magical/rootbeer ./rootbeer
+    cd rootbeer
+    ```
 
-2. Build/run the code
+2. Fetch dependencies
 
-        go build -o rbg .
-        ./rbg -map input.ccl -o output.ccl -progress
+    ```bash
+    go get -d .
+    ```
+
+3. Build/run the code
+
+    ```bash
+    go build -o rbg .
+    ./rbg -map input.ccl -o output.ccl -progress
+    ```
 
    _- or -_
 
-        go run . -map input.ccl -o output.ccl -progress
+    ```bash
+    go run . -map input.ccl -o output.ccl -progress
+    ```
 
 See the **Usage (example)** section for an in-depth example.
 
@@ -212,8 +223,10 @@ You can change it, but you will have to recompile RBG after you do (`go build` o
 
 The default size is 10×8. The size constants are defined at the top of [bitmap.go](bitmap.go):
 
-    const width = 10
-    const height = 8
+```go
+const width = 10
+const height = 8
+```
 
 The most important knob is height: increasing it increases RBG's memory consumption; conversely, decreasing it lowers memory consumption.
 The latter can be useful if you are running into memory limits. The maximum height is 255, theoretically, though you are likely to run out of memory well before that.
