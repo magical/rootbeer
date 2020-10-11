@@ -3,22 +3,16 @@ What is this?
 
 Root Beer Generator, aka `rbg`, aka The Notorious R.B.G., is a generator for sokoban-like puzzles.
 
-> finds the hardest arrangement of blocks
-> longest shortest path
-> memory-bound
-> push metric
-> CCL input/output
-
 Given an input level, RBG finds the hardest places to put blocks such that the level is still solvable.
 It was designed for "extraction"-type levels, where the goal is to push all the blocks out of a room.
 It works by running a level backwards, pulling blocks from the goal to the starting positions,
 meaning it only ever considers valid (solvable) game states.
 
-> Unlike other sokoban generators, RBG cannot place walls or other puzzle elements for you.
-> It turns out that level design is hard, subjective, and a problem that humans are good at
-> Doing an exhaustive search for block placement is (relatively) easy - or at least easy to define.
-  It is harder to define what makes a good level - at least in a way a computer can understand.
-  but it is not that hard for humans to learn. and it's much easier when you have a friend who can tell you where to put the blocks.
+Unlike other sokoban generators, RBG cannot place walls or other puzzle elements for you.
+Designing good levels requires a certain amount of aesthetic judgement;
+it is difficult to transfer that knowledge into a computer program.
+The program could place elements randomly, but that would be unlikely to lead to interesting levels.
+On the other hand, testing all possible ways of placing blocks is hard to do for a human but relatively easy to write an algorithm for.
 
 RBG finds the <dfn>longest shortest path</dfn> in the state space.
 The <dfn>shortest path</dfn> from any state to the goal state is the optimal solution for that state.
@@ -29,7 +23,7 @@ Doing this requires exhaustively exploring (and remembering!) the entire state s
 as such, the primary bottleneck is memory usage.
 With 2GB of memory, the upper limit is a few million states.
 The details depend on the level, but typically levels of size 8x8 or so (6x6 with popup walls) are computationally tractable to solve.
-The search takes up to a minute and the produces a solution of around 100 pushes max.
+The search takes up to a minute and the produces a solution of around 100 pushes (fewer for smaller levels, obviously).
 
 The metric RBG uses for solution length is the number of *pushes*, not the number of moves by the player.
 There are a couple reasons for this.
@@ -38,10 +32,8 @@ Second, subjectively, it seems to produce more interesting levels.
 (Some branches (see **Other tiles**) use the <dfn>box lines</dfn> metric, which
 counts pushing one block multiple times in a straight line as a single push.)
 
-> TODO: rewrite
-RBG is designed for "extraction"-type levels, where the goal is to push all the blocks out of a room;
-Note that RBG is designed for "extraction"-type levels, where the goal is to push all the blocks out of a room;
-it does not yet handle traditional sokoban levels, where the goal is to push all the blocks onto designated squares.
+As already mentioned, RBG generates "extraction"-type levels, where the goal is to push all the blocks out of a room.
+it cannot yet generate traditional sokoban levels, where the goal is to push all the blocks onto designated squares.
 (Support may be added in the future.)
 
 RBG was designed with Chip's Challenge in mind, although it could probably be adapted to other games.
@@ -67,7 +59,7 @@ It has no other dependencies.
         go build -o rbg .
         ./rbg -map input.ccl -o output.ccl -progress
 
-  _- or -_
+   _- or -_
 
         go run . -map input.ccl -o output.ccl -progress
 
@@ -150,8 +142,6 @@ When RBG is finished, it prints out the generated level, the solution, and some 
     -
     found 3 solutions of length 39
 
-> TODO: explain the search process better
-
 The first line is the number of unique states visited during the search —
 not super important but it might be interesting.
 The next line is the length of the optimal solution, followed the player's starting coordinates,
@@ -160,11 +150,11 @@ The only difference from the initial state is that there are more blocks (`[]`) 
 After this, it prints the state at each step in the solution (omitted here).
 Lastly, it prints the length of the optimal solution again and the number of paths it found of that length.
 
-In this case, RBG visited 1122 and found 3 that were 39 moves away from the input state.
+In this case, RBG visited 1122 states and found 3 that were 39 moves away from the input state.
 That is, it found 3 ways to place the blocks (and player) such that the optimal solution requires 39 pushes.
 One of these ways is shown, along with its solution.
 
-Sometimes there are multiple maximal paths —
+Sometimes there is a unique maximal path, but sometimes (as illustrated here) there are multiple maximal paths —
 different ways to place the starting blocks that, nevertheless, happen to have solutions of the same length.
 RBG only shows one of these (arbitrarily, the first one it happens to find).
 It would be possible to show the other paths too, but there is currently no user-configurable way to do so.
@@ -174,7 +164,7 @@ There may be many valid variations on the solution that RBG shows.
 RBG makes no attempt to track all the possible variations of a solution.
 The only thing we promise is that there is no shorter solution.
 
-As mentioned above, the level isn't directly playable yet;
+Okay. As mentioned above, the level isn't directly playable yet;
 we have to add an exit and somewhere for the blocks to go.
 Let's do that now.
 
@@ -190,8 +180,9 @@ Input format
 -----
 
 The input format is [CCL][CCL format].
-C2M support may be added in the future.
 [CCEdit][] is a good level editor.
+
+C2M support may be added in the future.
 
 * The input file must contain only a single level
 * Your tiles should be in the upper left corner of the level
@@ -216,6 +207,7 @@ Changing the level size
 -----------------------
 
 Level size directly impacts memory usage, so it is a compile-time constant, not configurable at runtime.
+You can change it, but you will have to recompile RBG after you do (`go build` or `go run`).
 
 The default size is 10×8. The size constants are defined at the top of [bitmap.go](bitmap.go):
 
@@ -241,10 +233,13 @@ Other tiles
 -----------
 
 Support for other puzzle elements is in various branches of the project.
-This was done to make it easy to experiment, because some puzzle elements are incompatible with each other, and because dealing with interations between elements would add significant complexity in some cases.
+This was done a) to make it easy to experiment, b) because some puzzle elements are incompatible with each other,
+and c) because dealing with interations between elements would add significant complexity in some cases.
 Some of these branches will probably be merged into the main branch in the future.
 
-* `thin` - Thin walls. Doesn't support [flicking][].
+You can change branches with `git checkout`.
+
+* `thin` - Thin walls. Note: doesn't support [flicking][].
 
 * `traps` - Single brown button and trap. Things cannot leave the trap unless the button is held down.
     Targets MS rules (does not support [trap ejection][]).
