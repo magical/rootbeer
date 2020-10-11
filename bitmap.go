@@ -1,3 +1,7 @@
+// Copyright 2020 Andrew Ekstedt
+// This program is licensed under the GNU Affero General
+// Public License v3.0. See LICENSE for details.
+
 package main
 
 type Bitmap [height]uint16
