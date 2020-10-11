@@ -45,7 +45,7 @@ Usage & Installation
 ----
 
 RBG is written in Go. You will need a [Go compiler][] in order to build it.
-It has no other dependencies.
+It depends only on [github.com/magical/littlebyte](https://github.com/magical/littlebyte/), for reading & writing CCL files.
 
 [Go compiler]: https://golang.org/dl/
 
@@ -53,6 +53,7 @@ It has no other dependencies.
 
         git clone https://github.com/magical/rootbeer ./rootbeer
         cd rootbeer
+        go get -d .
 
 2. Build/run the code
 
