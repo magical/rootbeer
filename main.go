@@ -27,7 +27,9 @@ func main() {
 		progress = time.Tick(1 * time.Second)
 	}
 
-	var g Generator
+	type Bitmap = Bitmap8
+	var height = len(new(Bitmap))
+	var g Generator[Bitmap, *Bitmap]
 	g.progress = progress
 
 	if *mapflag == "" {
@@ -74,7 +76,7 @@ func main() {
 		}
 	}
 
-	for i := range g.walls {
+	for i := range g.walls.Slice() {
 		g.walls[i] |= 0xFFFF >> width << width
 	}
 
@@ -114,13 +116,14 @@ func main() {
 
 }
 
-type Generator struct {
+type Generator[Bitmap BitmapT[Bitmap], BitmapP BitmapI[Bitmap]] struct {
 	// TODO: add a separate field for unenterable tiles
 	// and let walls just be walls
 	walls    Bitmap
 	sink     Point // where the block have to go (come from)
 	startPos Point
 
+	nodepool []node[Bitmap, BitmapP]
 	count    [256]int
 	progress <-chan time.Time
 }
@@ -147,19 +150,20 @@ var dirs = [4]Point{
 // if set to 1 this becomes the normal push metric
 const maxPush = 1
 
-func (g *Generator) Search() *node {
-	var visited = make(map[state]struct{})
-	var queue nodeQueue // []*node
-	var start = new(node)
+func (g *Generator[Bitmap, BitmapP]) Search() *node[Bitmap, BitmapP] {
+	var height = len(*new(Bitmap))
+	var visited = make(map[state[Bitmap, BitmapP]]struct{})
+	var queue nodeQueue[Bitmap, BitmapP] // []*node
+	var start = new(node[Bitmap, BitmapP])
 	var max = start
 	var blocks []Point
-	start.state.blocks.Set(g.sink.X, g.sink.Y, true)
+	BitmapP(&start.state.blocks).Set(g.sink.X, g.sink.Y, true)
 	start.state.pos = g.startPos
 	start.state.normalize(&g.walls)
 	log.Print("\n", formatLevel(g, start))
 	queue = append(queue, start)
 	for len(queue) > 0 {
-		no := heap.Pop(&queue).(*node)
+		no := heap.Pop(&queue).(*node[Bitmap, BitmapP])
 		if _, ok := visited[no.state]; ok {
 			continue
 		}
@@ -178,22 +182,23 @@ func (g *Generator) Search() *node {
 			runtime.ReadMemStats(&m)
 			log.Printf("alloc: current %d MB, max %d MB, sys %d MB", m.Alloc/1e6, m.TotalAlloc/1e6, m.Sys/1e6)
 			log.Printf("search: current %d, max %d, visited: %d, queue %d\n%s", no.len, max.len, len(visited), len(queue),
-				no.state.blocks.String())
+				BitmapP(&no.state.blocks).String())
 		default:
 		}
 
 		// find reachable squares
-		r := reachable(no.state.pos.X, no.state.pos.Y, &g.walls, &no.state.blocks)
+		var r Bitmap
+		BitmapP(&r).reachable(no.state.pos.X, no.state.pos.Y, &g.walls, &no.state.blocks)
 
 		// find blocks
 		blocks = blocks[:0]
-		for i, bl := range no.state.blocks {
+		for i, bl := range BitmapP(&no.state.blocks).Slice() {
 			/// TODO: maybe mask bl with r?
 			for bl != 0 {
 				y := i
 				x := bits.Len16(bl) - 1
 				bl = bl & ((1 << x) - 1) // clear current block
-				if !no.state.blocks.At(int8(x), int8(y)) {
+				if !BitmapP(&no.state.blocks).At(int8(x), int8(y)) {
 					panic("block does not exist")
 				}
 				blocks = append(blocks, Point{X: int8(x), Y: int8(y)})
@@ -215,7 +220,7 @@ func (g *Generator) Search() *node {
 				if y+dy < 0 || y+dy >= height {
 					continue
 				}
-				if !r.At(int8(x+dx), int8(y+dy)) {
+				if !BitmapP(&r).At(int8(x+dx), int8(y+dy)) {
 					continue
 				}
 
@@ -232,22 +237,22 @@ func (g *Generator) Search() *node {
 					if y+dy*(j+1) < 0 || y+dy*(j+1) >= height {
 						break
 					}
-					if !r.At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
+					if !BitmapP(&r).At(int8(x+dx*(j+1)), int8(y+dy*(j+1))) {
 						break
 					}
 
-					new := newnode()
-					*new = node{
+					new := g.newnode()
+					*new = node[Bitmap, BitmapP]{
 						state:  no.state,
 						parent: no,
 						len:    no.len + 1,
 					}
 					// set the new block position
-					new.state.blocks.Set(int8(x), int8(y), false)
-					new.state.blocks.Set(int8(x+dx*j), int8(y+dy*j), true)
+					BitmapP(&new.state.blocks).Set(int8(x), int8(y), false)
+					BitmapP(&new.state.blocks).Set(int8(x+dx*j), int8(y+dy*j), true)
 
 					// there is always a block at the sink
-					new.state.blocks.Set(g.sink.X, g.sink.Y, true)
+					BitmapP(&new.state.blocks).Set(g.sink.X, g.sink.Y, true)
 
 					// update pos
 					new.state.pos.X = int8(x + dx*(j+1))
@@ -268,9 +273,10 @@ func (g *Generator) Search() *node {
 	return max
 }
 
-func (s *state) normalize(walls *Bitmap) {
-	r := reachable(s.pos.X, s.pos.Y, &s.blocks, walls)
-	for i := range r {
+func (s *state[Bitmap, BitmapP]) normalize(walls BitmapP) {
+	var r Bitmap
+	BitmapP(&r).reachable(s.pos.X, s.pos.Y, &s.blocks, (*Bitmap)(walls))
+	for i := range BitmapP(&r).Slice() {
 		if r[i] != 0 {
 			s.pos.Y = int8(i)
 			s.pos.X = int8(bits.Len16(r[i]) - 1)
@@ -279,10 +285,10 @@ func (s *state) normalize(walls *Bitmap) {
 	}
 }
 
-// Return a bitmap of all squares reachable from x,y
+// Sets b to the bitmap of all squares reachable from x,y
 // without visiting mask1 or mask2
-func reachable(x, y int8, mask1, mask2 *Bitmap) Bitmap {
-	var a Bitmap
+func (b *Bitmap8) reachable(x, y int8, mask1, mask2 *Bitmap8) {
+	var a Bitmap8
 	a.Set(x, y, true)
 	for {
 		prev := uint16(0)
@@ -304,51 +310,76 @@ func reachable(x, y int8, mask1, mask2 *Bitmap) Bitmap {
 			break
 		}
 	}
-	return a
+	*b = a
 }
 
-type node struct {
-	state  state
-	parent *node
+func (b *Bitmap5) reachable(x, y int8, mask1, mask2 *Bitmap5) {
+	var a Bitmap5
+	a.Set(x, y, true)
+	for {
+		prev := uint16(0)
+		changed := uint16(0)
+		for i := 0; i < len(a); i++ {
+			tmp := a[i]
+			tmp2 := tmp | tmp<<1 | tmp>>1 | prev
+			if i+1 < len(a) {
+				tmp2 |= a[i+1]
+			}
+			tmp2 &^= mask1[i]
+			tmp2 &^= mask2[i]
+			changed |= tmp2 &^ tmp
+			a[i] |= tmp2
+			prev = tmp
+		}
+
+		if changed == 0 {
+			break
+		}
+	}
+	*b = a
+}
+
+type node[Bitmap BitmapT[Bitmap], BitmapP BitmapI[Bitmap]] struct {
+	state  state[Bitmap, BitmapP]
+	parent *node[Bitmap, BitmapP]
 	len    int
 }
 
-type state struct {
+type state[Bitmap BitmapT[Bitmap], BitmapP BitmapI[Bitmap]] struct {
 	blocks Bitmap
 	pos    Point // position of player after last pull
 }
 
-type nodeQueue []*node
+type nodeQueue[T BitmapT[T], PT BitmapI[T]] []*(node[T, PT])
 
-func (h nodeQueue) Len() int            { return len(h) }
-func (h nodeQueue) Less(i, j int) bool  { return h[i].len < h[j].len }
-func (h nodeQueue) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *nodeQueue) Push(x interface{}) { *h = append(*h, x.(*node)) }
-func (h *nodeQueue) Pop() interface{} {
+func (h nodeQueue[T, PT]) Len() int            { return len(h) }
+func (h nodeQueue[T, PT]) Less(i, j int) bool  { return h[i].len < h[j].len }
+func (h nodeQueue[T, PT]) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *nodeQueue[T, PT]) Push(x interface{}) { *h = append(*h, x.(*node[T, PT])) }
+func (h *nodeQueue[T, PT]) Pop() interface{} {
 	x := (*h)[len(*h)-1]
 	*h = (*h)[:len(*h)-1]
 	return x
 }
 
-var nodepool []node
-
 // bump allocator for nodes
-func newnode() *node {
-	if len(nodepool) == 0 {
-		nodepool = make([]node, 100000)
+func (g *Generator[Bitmap, BitmapP]) newnode() *node[Bitmap, BitmapP] {
+	if len(g.nodepool) == 0 {
+		g.nodepool = make([]node[Bitmap, BitmapP], 100000)
 	}
-	node := &nodepool[0]
-	nodepool = nodepool[1:]
+	node := &g.nodepool[0]
+	g.nodepool = g.nodepool[1:]
 	return node
 }
 
-func formatLevel(g *Generator, n *node) string {
+func formatLevel[Bitmap BitmapT[Bitmap], BitmapP BitmapI[Bitmap]](g *Generator[Bitmap, BitmapP], n *node[Bitmap, BitmapP]) string {
 	var s []byte
+	var height = len(*new(Bitmap))
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			if g.walls.At(int8(x), int8(y)) {
+			if BitmapP(&g.walls).At(int8(x), int8(y)) {
 				s = append(s, "##"...)
-			} else if n.state.blocks.At(int8(x), int8(y)) {
+			} else if BitmapP(&n.state.blocks).At(int8(x), int8(y)) {
 				s = append(s, "[]"...)
 			} else if x == int(n.state.pos.X) && y == int(n.state.pos.Y) {
 				s = append(s, "$ "...)
